@@ -2,13 +2,16 @@ package conn
 
 import (
 	"context"
+	"github.com/hamed-yousefi/channelize/utils"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 )
 
 // Connection wraps the websocket connection and add more functionalities to it.
+// Each client that connected to the websocket server has a Connection.
 type Connection struct {
 	// id represents connectionID
 	id string
@@ -35,6 +38,9 @@ type Connection struct {
 	// connected represent the connection status. it's true if the connection
 	// is open. Otherwise, it is false.
 	connected bool
+
+	// config represents connection configuration.
+	config Config
 }
 
 func NewConnection(ctx context.Context, conn *websocket.Conn, options ...Option) *Connection {
@@ -48,15 +54,19 @@ func NewConnection(ctx context.Context, conn *websocket.Conn, options ...Option)
 	// wrap the application context with cancellation
 	ctx, cancel := context.WithCancel(ctx)
 
-	out := &Connection{
+	connWrapper := &Connection{
 		id:        uuid.NewV4().String(),
 		conn:      conn,
 		connected: true,
 		cancel:    cancel,
 		send:      make(chan []byte, config.outboundBufferSize),
+		config:    *config,
 	}
 
-	return out
+	go connWrapper.read(ctx)
+	go connWrapper.write(ctx)
+
+	return connWrapper
 }
 
 // isConnected returns true if connections. Otherwise, returns false.
@@ -68,11 +78,18 @@ func (c *Connection) isConnected() bool {
 	return out
 }
 
+// Close closes the websocket.Conn and cancel the connection context.
+// Cancelling the context causes closing the running read and write
+// goroutines. The closing connection process is singleton.
 func (c *Connection) Close() error {
 	var err error
 
 	// Do it once
 	c.once.Do(func() {
+		c.mu.Lock()
+		c.connected = false
+		c.mu.Unlock()
+
 		// TODO unsubscribe all the streams
 
 		// cancel the context to exist from read and write goroutines
@@ -80,13 +97,6 @@ func (c *Connection) Close() error {
 
 		// close the websocket connection
 		err = c.conn.Close()
-
-		// release the memory
-		c.conn = nil
-
-		c.mu.Lock()
-		c.connected = false
-		c.mu.Unlock()
 	})
 
 	if err != nil {
@@ -94,4 +104,126 @@ func (c *Connection) Close() error {
 	}
 
 	return nil
+}
+
+// read sets the pong handler and read deadline and listen to the
+// websocket connection to read the peer messages.
+//
+// If the message type is not close, ping, or pong, the read method
+// deserializes and validate the peer message.
+//
+// If the message was valid, it will subscribe or unsubscribe to one
+// or more channels.
+func (c *Connection) read(ctx context.Context) {
+	defer func() {
+		// TODO log the close error
+		_ = c.Close()
+	}()
+
+	// set pong message expiration time.
+	if err := c.conn.SetReadDeadline(utils.Now().Add(c.config.pongWait)); err != nil {
+		// TODO log the error
+		return
+	}
+
+	// create and set pong handler
+	c.conn.SetPongHandler(func(in string) error {
+		// update pong message expiration time
+		if err := c.conn.SetReadDeadline(utils.Now().Add(c.config.pongWait)); err != nil {
+			// TODO log the error
+			return err
+		}
+
+		return nil
+	})
+
+	// listen to the websocket connection in an infinite for loop to
+	// receive peer messages. Break the loop and return if any error
+	// happened or received close message from the peer.
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		messageType, message, err := c.conn.ReadMessage()
+		if err != nil {
+			// TODO log the read message error
+			return
+		}
+
+		// check if the message type is a close message then return.
+		if isCloseMessageType(messageType) {
+			return
+		}
+
+		// check if it is pong message, continue.
+		if isPingPongMessageType(messageType) {
+			continue
+		}
+
+		// TODO unmarshal and validate the message
+		_ = message
+	}
+}
+
+func isCloseMessageType(code int) bool {
+	return code == websocket.CloseMessage ||
+		(code >= websocket.CloseNormalClosure && code <= websocket.CloseTLSHandshake)
+}
+
+func isPingPongMessageType(code int) bool {
+	return code == websocket.PingMessage || code == websocket.PongMessage
+}
+
+// write listens to send channel and write the messages to the
+// websocket connection.
+//
+// It writes a ping message based on the Config.pingPeriod. By
+// default, the ping message is unix timestamp.
+//
+// write will break the for loop and return whenever an error
+// happens or context has been cancelled.
+func (c *Connection) write(ctx context.Context) {
+	pingTicker := time.NewTicker(c.config.pingPeriod)
+
+	defer func() {
+		pingTicker.Stop()
+		// TODO log the close error
+		_ = c.Close()
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-pingTicker.C:
+			c.mu.RLock()
+			// return if the connection is already closed.
+			if !c.isConnected() {
+				return
+			}
+
+			// write the ping message to the peer.
+			if err := c.conn.WriteMessage(websocket.PingMessage, c.config.pingMessageFunc()); err != nil {
+				// TODO log the error
+				return
+			}
+			c.mu.RUnlock()
+		case message := <-c.send:
+			c.mu.RLock()
+			// return if the connection is already closed.
+			if !c.isConnected() {
+				return
+			}
+
+			// write the message to the peer.
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				// TODO log the error
+				return
+			}
+			c.mu.RUnlock()
+		}
+	}
 }

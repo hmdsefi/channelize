@@ -1,6 +1,10 @@
 package conn
 
-import "time"
+import (
+	"fmt"
+	"github.com/hamed-yousefi/channelize/utils"
+	"time"
+)
 
 const (
 	// The default value of buffer size of the outbound channel.
@@ -13,6 +17,8 @@ const (
 	defaultPingPeriod = (defaultPongWait * 9) / 10
 )
 
+type pingMessageFunc func() []byte
+
 // Config represents the configuration that is needed to create a new Connection.
 type Config struct {
 	// outboundBufferSize represents the buffer size of the outbound channel.
@@ -23,6 +29,9 @@ type Config struct {
 
 	// pingPeriod represents the time to send ping to peer. Must be less than pongWait.
 	pingPeriod time.Duration
+
+	// pingMessageFunc is a function that create ping messages.
+	pingMessageFunc pingMessageFunc
 }
 
 func newDefaultConfig() *Config {
@@ -30,6 +39,7 @@ func newDefaultConfig() *Config {
 		outboundBufferSize: defaultOutboundBufferSize,
 		pongWait:           defaultPongWait,
 		pingPeriod:         defaultPingPeriod,
+		pingMessageFunc:    defaultPingMessageFunc,
 	}
 }
 
@@ -63,4 +73,18 @@ func WithPingPeriod(duration time.Duration) Option {
 
 		config.pingPeriod = duration
 	}
+}
+
+func WithPingMessageFunc(messageFunc pingMessageFunc) Option {
+	return func(config *Config) {
+		if config == nil {
+			return
+		}
+
+		config.pingMessageFunc = messageFunc
+	}
+}
+
+func defaultPingMessageFunc() []byte {
+	return []byte(fmt.Sprint(utils.Now().Unix()))
 }
