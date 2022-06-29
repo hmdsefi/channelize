@@ -1,2 +1,2 @@
 # channelize
-A wrapper around gorrila websocket that can channelize the websocket messages.
+A wrapper around gorilla websocket that can channelize the websocket messages.

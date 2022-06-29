@@ -1,9 +1,14 @@
+/**
+ * Copyright © 2022 Hamed Yousefi <hdyousefi@gmail.com>.
+ */
+
 package conn
 
 import (
 	"fmt"
-	"github.com/hamed-yousefi/channelize/utils"
 	"time"
+
+	"github.com/hamed-yousefi/channelize/utils"
 )
 
 const (

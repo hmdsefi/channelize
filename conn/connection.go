@@ -1,14 +1,25 @@
+/**
+ * Copyright © 2022 Hamed Yousefi <hdyousefi@gmail.com>.
+ */
+
 package conn
 
 import (
 	"context"
-	"github.com/hamed-yousefi/channelize/utils"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
+
+	"github.com/hamed-yousefi/channelize/utils"
 )
+
+// messageProcessor is a mechanism to validate and process peer messages.
+type messageProcessor interface {
+	Validate(message []byte) Validation
+	ProcessMessage(ctx context.Context, conn *Connection, message []byte)
+}
 
 // Connection wraps the websocket connection and add more functionalities to it.
 // Each client that connected to the websocket server has a Connection.
@@ -43,7 +54,23 @@ type Connection struct {
 	config Config
 }
 
-func NewConnection(ctx context.Context, conn *websocket.Conn, options ...Option) *Connection {
+// NewConnection creates a new instance of Connection that wraps the input
+// websocket.Conn.
+//
+// It runs read and write goroutines to read the client messages and write
+// the server messages to the connection.
+//
+// websocket.Conn can be close by calling the Connection.Close method. It will
+// stop the goroutines and release the memory.
+//
+// Cancelling input context, closes the connection. So, the input context
+// must be the application context not the request context.
+func NewConnection(
+	ctx context.Context,
+	conn *websocket.Conn,
+	msgProcessor messageProcessor,
+	options ...Option,
+) *Connection {
 	// setup connection configuration
 	config := newDefaultConfig()
 
@@ -63,10 +90,36 @@ func NewConnection(ctx context.Context, conn *websocket.Conn, options ...Option)
 		config:    *config,
 	}
 
-	go connWrapper.read(ctx)
+	go connWrapper.read(ctx, msgProcessor)
 	go connWrapper.write(ctx)
 
 	return connWrapper
+}
+
+// sendMessage sends the input message to the outbound channel.
+// Connection.write method will receive this message and writes it to the
+// client.
+//
+// Before sending the input message, it checks if the connection is still
+// open or not. If it is closed, closes the outbound channel and return error.
+//
+// Returns error if outbound buffer is full.
+func (c *Connection) sendMessage(message []byte) error {
+	// check if the connection is already closed, close the outbound
+	// channel and return error.
+	if !c.isConnected() {
+		close(c.send)
+		return newConnectionError(CodeConnectionClosed)
+	}
+
+	select {
+	case c.send <- message:
+		return nil
+	default:
+		// it happens when Config.outboundBufferSize is too small and load on
+		// Connection.sendMessage method is too high.
+		return newConnectionError(CodeOutboundBufferIsFull)
+	}
 }
 
 // isConnected returns true if connections. Otherwise, returns false.
@@ -90,6 +143,9 @@ func (c *Connection) Close() error {
 		c.connected = false
 		c.mu.Unlock()
 
+		// NOTE: do not close the outbound channel here. It can cause panic.
+		// The
+
 		// TODO unsubscribe all the streams
 
 		// cancel the context to exist from read and write goroutines
@@ -107,14 +163,14 @@ func (c *Connection) Close() error {
 }
 
 // read sets the pong handler and read deadline and listen to the
-// websocket connection to read the peer messages.
+// websocket connection to read the client messages.
 //
 // If the message type is not close, ping, or pong, the read method
-// deserializes and validate the peer message.
+// deserializes and validate the client message.
 //
 // If the message was valid, it will subscribe or unsubscribe to one
 // or more channels.
-func (c *Connection) read(ctx context.Context) {
+func (c *Connection) read(ctx context.Context, msgProcessor messageProcessor) {
 	defer func() {
 		// TODO log the close error
 		_ = c.Close()
@@ -138,8 +194,8 @@ func (c *Connection) read(ctx context.Context) {
 	})
 
 	// listen to the websocket connection in an infinite for loop to
-	// receive peer messages. Break the loop and return if any error
-	// happened or received close message from the peer.
+	// receive client messages. Break the loop and return if any error
+	// happened or received close message from the client.
 	for {
 		select {
 		case <-ctx.Done():
@@ -163,8 +219,13 @@ func (c *Connection) read(ctx context.Context) {
 			continue
 		}
 
-		// TODO unmarshal and validate the message
-		_ = message
+		if v := msgProcessor.Validate(message); !v.IsValid() {
+			// TODO log invalid message error
+			// TODO should we publish the error to the WS
+			continue
+		}
+
+		msgProcessor.ProcessMessage(ctx, c, message)
 	}
 }
 
