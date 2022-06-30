@@ -12,12 +12,14 @@ import (
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 
+	"github.com/hamed-yousefi/channelize/errorx"
 	"github.com/hamed-yousefi/channelize/utils"
+	"github.com/hamed-yousefi/channelize/validation"
 )
 
-// messageProcessor is a mechanism to validate and process peer messages.
+// messageProcessor is a mechanism to validation and process peer messages.
 type messageProcessor interface {
-	Validate(message []byte) Validation
+	Validate(message []byte) validation.Result
 	ProcessMessage(ctx context.Context, conn *Connection, message []byte)
 }
 
@@ -109,7 +111,7 @@ func (c *Connection) sendMessage(message []byte) error {
 	// channel and return error.
 	if !c.isConnected() {
 		close(c.send)
-		return newConnectionError(CodeConnectionClosed)
+		return errorx.NewChannelizeError(errorx.CodeConnectionClosed)
 	}
 
 	select {
@@ -118,7 +120,7 @@ func (c *Connection) sendMessage(message []byte) error {
 	default:
 		// it happens when Config.outboundBufferSize is too small and load on
 		// Connection.sendMessage method is too high.
-		return newConnectionError(CodeOutboundBufferIsFull)
+		return errorx.NewChannelizeError(errorx.CodeOutboundBufferIsFull)
 	}
 }
 
@@ -166,7 +168,7 @@ func (c *Connection) Close() error {
 // websocket connection to read the client messages.
 //
 // If the message type is not close, ping, or pong, the read method
-// deserializes and validate the client message.
+// deserializes and validation the client message.
 //
 // If the message was valid, it will subscribe or unsubscribe to one
 // or more channels.

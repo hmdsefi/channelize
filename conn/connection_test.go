@@ -14,6 +14,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamed-yousefi/channelize/validation"
 )
 
 const (
@@ -39,8 +41,8 @@ func newMockMessageProcessor(receive chan<- string) *MockMessageProcessor {
 	}
 }
 
-func (m MockMessageProcessor) Validate(_ []byte) Validation {
-	return Validation{}
+func (m MockMessageProcessor) Validate(_ []byte) validation.Result {
+	return validation.Result{}
 }
 
 func (m MockMessageProcessor) ProcessMessage(_ context.Context, _ *Connection, message []byte) {
