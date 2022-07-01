@@ -32,15 +32,15 @@ var (
 // ChannelizeError represents a custom error object that holds
 // error details.
 type ChannelizeError struct {
-	code    int
+	Code    int
 	message string
 	err     error
 }
 
-// NewChannelizeError creates a new custom error by using an error code.
+// NewChannelizeError creates a new custom error by using an error Code.
 func NewChannelizeError(code int) *ChannelizeError {
 	return &ChannelizeError{
-		code:    code,
+		Code:    code,
 		message: code2ErrMsg[code],
 	}
 }
@@ -49,7 +49,7 @@ func NewChannelizeError(code int) *ChannelizeError {
 // existing error.
 func NewChannelizeErrorWithErr(code int, err error) *ChannelizeError {
 	return &ChannelizeError{
-		code:    code,
+		Code:    code,
 		message: code2ErrMsg[code],
 		err:     err,
 	}

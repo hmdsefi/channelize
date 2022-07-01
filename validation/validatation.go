@@ -31,6 +31,14 @@ type Result struct {
 	FieldErrors []fieldError `json:"field_errors,omitempty"`
 }
 
+// NewResult creates a new Result object with the input code and error.
+func NewResult(code, err string) *Result {
+	return &Result{
+		Error: err,
+		Code:  code,
+	}
+}
+
 // AddFieldError creates a new fieldError object and adds it to the Result.FieldErrors
 func (r *Result) AddFieldError(field string, err string) {
 	r.FieldErrors = append(r.FieldErrors, newFieldError(field, err))
