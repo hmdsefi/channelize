@@ -131,7 +131,7 @@ func TestNewConnection(t *testing.T) {
 
 		require.Equal(t, 1, len(handler.connections))
 
-		err = handler.connections[0].sendMessage([]byte(expectedServerMsg))
+		err = handler.connections[0].SendMessage([]byte(expectedServerMsg))
 		require.Nil(t, err)
 
 		msgType, msg, err := ws.ReadMessage()

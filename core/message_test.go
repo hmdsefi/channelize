@@ -2,7 +2,7 @@
  * Copyright © 2022 Hamed Yousefi <hdyousefi@gmail.com>.
  */
 
-package channelize
+package core
 
 import (
 	"errors"
@@ -36,13 +36,13 @@ func TestUnmarshalMessageIn(t *testing.T) {
 	incorrectJSONString := `{"type":"subscribe","params":"channels":["notification","feed"]}}`
 
 	t.Run("unmarshal correct json input", func(t *testing.T) {
-		msg, err := unmarshalMessageIn([]byte(correctJSONString))
+		msg, err := UnmarshalMessageIn([]byte(correctJSONString))
 		require.Nil(t, err)
 		assert.Equal(t, expectedMsg, msg)
 	})
 
 	t.Run("unmarshal incorrect json input", func(t *testing.T) {
-		msg, err := unmarshalMessageIn([]byte(incorrectJSONString))
+		msg, err := UnmarshalMessageIn([]byte(incorrectJSONString))
 		assert.NotNil(t, err)
 		var chanErr *errorx.ChannelizeError
 		assert.True(t, errors.As(err, &chanErr))
