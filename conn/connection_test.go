@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hamed-yousefi/channelize/validation"
+	"github.com/hamed-yousefi/channelize/common/validation"
 )
 
 const (

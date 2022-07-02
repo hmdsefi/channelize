@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 
 	"github.com/hamed-yousefi/channelize/channel"
-	"github.com/hamed-yousefi/channelize/errorx"
-	"github.com/hamed-yousefi/channelize/validation"
+	"github.com/hamed-yousefi/channelize/common/errorx"
+	"github.com/hamed-yousefi/channelize/common/validation"
 )
 
 const (
@@ -97,4 +97,8 @@ func (m messageIn) Validate() *validation.Result {
 type MessageOut struct {
 	Channel channel.Channel `json:"channel"`
 	Data    interface{}     `json:"data"`
+}
+
+func newMessageOut(channel channel.Channel, data interface{}) *MessageOut {
+	return &MessageOut{Channel: channel, Data: data}
 }

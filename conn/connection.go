@@ -12,9 +12,9 @@ import (
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/hamed-yousefi/channelize/errorx"
-	"github.com/hamed-yousefi/channelize/utils"
-	"github.com/hamed-yousefi/channelize/validation"
+	"github.com/hamed-yousefi/channelize/common/errorx"
+	"github.com/hamed-yousefi/channelize/common/utils"
+	"github.com/hamed-yousefi/channelize/common/validation"
 )
 
 // messageProcessor is a mechanism to validation and process peer messages.

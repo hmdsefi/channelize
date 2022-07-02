@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/hamed-yousefi/channelize/channel"
+	"github.com/hamed-yousefi/channelize/common"
 	"github.com/hamed-yousefi/channelize/conn"
 	"github.com/hamed-yousefi/channelize/core"
 )
 
 type store interface {
-	Subscribe(ctx context.Context, conn *conn.Connection, channels ...channel.Channel)
+	Subscribe(ctx context.Context, conn common.ConnectionWrapper, channels ...channel.Channel)
 	Unsubscribe(ctx context.Context, connID string, channels ...channel.Channel)
 	Remove(ctx context.Context, connID string)
 }
