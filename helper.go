@@ -1,3 +1,7 @@
+/**
+ * Copyright © 2022 Hamed Yousefi <hdyousefi@gmail.com>.
+ */
+
 package channelize
 
 import (
