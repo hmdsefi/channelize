@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hamed-yousefi/channelize/validation"
+	"github.com/hamed-yousefi/channelize/common/validation"
 )
 
 const (
@@ -131,7 +131,7 @@ func TestNewConnection(t *testing.T) {
 
 		require.Equal(t, 1, len(handler.connections))
 
-		err = handler.connections[0].sendMessage([]byte(expectedServerMsg))
+		err = handler.connections[0].SendMessage([]byte(expectedServerMsg))
 		require.Nil(t, err)
 
 		msgType, msg, err := ws.ReadMessage()

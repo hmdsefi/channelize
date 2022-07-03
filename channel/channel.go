@@ -60,3 +60,18 @@ func RegisterPublicChannel(channelStr string) Channel {
 
 	return channel
 }
+
+// RegisterPublicChannels registers a list of channels. It is thread safe.
+func RegisterPublicChannels(channels ...string) []Channel {
+	mu.Lock()
+	defer mu.Unlock()
+
+	out := make([]Channel, len(channels))
+	for i := range channels {
+		out[i] = Channel(channels[i])
+		supportedChannels[out[i]] = struct{}{}
+		supportedPublicChannels[out[i]] = struct{}{}
+	}
+
+	return out
+}

@@ -12,9 +12,9 @@ import (
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/hamed-yousefi/channelize/errorx"
-	"github.com/hamed-yousefi/channelize/utils"
-	"github.com/hamed-yousefi/channelize/validation"
+	"github.com/hamed-yousefi/channelize/common/errorx"
+	"github.com/hamed-yousefi/channelize/common/utils"
+	"github.com/hamed-yousefi/channelize/common/validation"
 )
 
 // messageProcessor is a mechanism to validation and process peer messages.
@@ -98,7 +98,12 @@ func NewConnection(
 	return connWrapper
 }
 
-// sendMessage sends the input message to the outbound channel.
+// ID returns the connection id.
+func (c *Connection) ID() string {
+	return c.id
+}
+
+// SendMessage sends the input message to the outbound channel.
 // Connection.write method will receive this message and writes it to the
 // client.
 //
@@ -106,7 +111,7 @@ func NewConnection(
 // open or not. If it is closed, closes the outbound channel and return error.
 //
 // Returns error if outbound buffer is full.
-func (c *Connection) sendMessage(message []byte) error {
+func (c *Connection) SendMessage(message []byte) error {
 	// check if the connection is already closed, close the outbound
 	// channel and return error.
 	if !c.isConnected() {
@@ -119,7 +124,7 @@ func (c *Connection) sendMessage(message []byte) error {
 		return nil
 	default:
 		// it happens when Config.outboundBufferSize is too small and load on
-		// Connection.sendMessage method is too high.
+		// Connection.SendMessage method is too high.
 		return errorx.NewChannelizeError(errorx.CodeOutboundBufferIsFull)
 	}
 }

@@ -2,14 +2,14 @@
  * Copyright © 2022 Hamed Yousefi <hdyousefi@gmail.com>.
  */
 
-package channelize
+package core
 
 import (
 	"encoding/json"
 
 	"github.com/hamed-yousefi/channelize/channel"
-	"github.com/hamed-yousefi/channelize/errorx"
-	"github.com/hamed-yousefi/channelize/validation"
+	"github.com/hamed-yousefi/channelize/common/errorx"
+	"github.com/hamed-yousefi/channelize/common/validation"
 )
 
 const (
@@ -56,9 +56,9 @@ type messageIn struct {
 	Params      paramIn     `json:"params"`
 }
 
-// unmarshalMessageIn deserializes the input slice of bytes that has
+// UnmarshalMessageIn deserializes the input slice of bytes that has
 // been read from the websocket connection.
-func unmarshalMessageIn(data []byte) (*messageIn, error) {
+func UnmarshalMessageIn(data []byte) (*messageIn, error) {
 	var msgIn messageIn
 	if err := json.Unmarshal(data, &msgIn); err != nil {
 		return nil, errorx.NewChannelizeErrorWithErr(errorx.CodeFailedToUnmarshalMessage, err)
@@ -97,4 +97,8 @@ func (m messageIn) Validate() *validation.Result {
 type MessageOut struct {
 	Channel channel.Channel `json:"channel"`
 	Data    interface{}     `json:"data"`
+}
+
+func newMessageOut(channel channel.Channel, data interface{}) *MessageOut {
+	return &MessageOut{Channel: channel, Data: data}
 }

@@ -11,12 +11,14 @@ const (
 	CodeOutboundBufferIsFull = 1001
 
 	CodeFailedToUnmarshalMessage = 1500
+	CodeFailedToMarshalMessage   = 1501
 )
 
 const (
 	ErrorMsgConnectionClosed        = "websocket connection is closed"
 	ErrorMsgOutboundBufferIsFull    = "connection outbound buffer is full"
 	ErrorMsgUnmarshalInboundMessage = "failed to unmarshal inbound message"
+	ErrorMsgMarshalOutboundMessage  = "failed to marshal outbound message"
 	ErrorMsgUnsupportedMessageType  = "message type is not supported"
 	ErrorMsgChannelsIsEmpty         = "channels list is empty, minimum size is 1"
 )
@@ -26,6 +28,7 @@ var (
 		CodeConnectionClosed:         ErrorMsgConnectionClosed,
 		CodeOutboundBufferIsFull:     ErrorMsgOutboundBufferIsFull,
 		CodeFailedToUnmarshalMessage: ErrorMsgUnmarshalInboundMessage,
+		CodeFailedToMarshalMessage:   ErrorMsgMarshalOutboundMessage,
 	}
 )
 
