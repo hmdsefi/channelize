@@ -14,8 +14,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/hamed-yousefi/channelize/common/validation"
 )
 
 const (
@@ -35,17 +33,16 @@ type MockMessageProcessor struct {
 	receive chan<- string
 }
 
-func newMockMessageProcessor(receive chan<- string) *MockMessageProcessor {
+func newMockHelper(receive chan<- string) *MockMessageProcessor {
 	return &MockMessageProcessor{
 		receive: receive,
 	}
 }
 
-func (m MockMessageProcessor) Validate(_ []byte) validation.Result {
-	return validation.Result{}
+func (m MockMessageProcessor) Remove(_ context.Context, connID string) {
 }
 
-func (m MockMessageProcessor) ProcessMessage(_ context.Context, _ *Connection, message []byte) {
+func (m MockMessageProcessor) ParseMessage(_ context.Context, _ *Connection, message []byte) {
 	m.receive <- string(message)
 }
 
@@ -96,7 +93,7 @@ func (s *Handler) makeWebsocketHandler(t *testing.T) http.HandlerFunc {
 // TestNewConnection tests Connection initialization and read/write methods.
 func TestNewConnection(t *testing.T) {
 	receiver := make(chan string)
-	mockMsgProcessor := newMockMessageProcessor(receiver)
+	mockMsgProcessor := newMockHelper(receiver)
 	defer mockMsgProcessor.close()
 
 	handler := newHandler(t, mockMsgProcessor)

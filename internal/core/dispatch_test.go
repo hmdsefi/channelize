@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hamed-yousefi/channelize/channel"
-	"github.com/hamed-yousefi/channelize/common"
-	"github.com/hamed-yousefi/channelize/core/mock"
+	"github.com/hamed-yousefi/channelize/internal/channel"
+	"github.com/hamed-yousefi/channelize/internal/common"
+	"github.com/hamed-yousefi/channelize/internal/core/mock"
 )
 
 var (

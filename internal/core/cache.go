@@ -8,8 +8,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/hamed-yousefi/channelize/channel"
-	"github.com/hamed-yousefi/channelize/common"
+	"github.com/hamed-yousefi/channelize/internal/channel"
+	"github.com/hamed-yousefi/channelize/internal/common"
 )
 
 // Cache is an in-memory storage to store available channels and connections.
