@@ -12,15 +12,14 @@ import (
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/hamed-yousefi/channelize/common/errorx"
-	"github.com/hamed-yousefi/channelize/common/utils"
-	"github.com/hamed-yousefi/channelize/common/validation"
+	"github.com/hamed-yousefi/channelize/internal/common/errorx"
+	"github.com/hamed-yousefi/channelize/internal/common/utils"
 )
 
-// messageProcessor is a mechanism to validation and process peer messages.
-type messageProcessor interface {
-	Validate(message []byte) validation.Result
-	ProcessMessage(ctx context.Context, conn *Connection, message []byte)
+// helper connects connection to the storage.
+type helper interface {
+	ParseMessage(ctx context.Context, conn *Connection, message []byte)
+	Remove(ctx context.Context, connID string)
 }
 
 // Connection wraps the websocket connection and add more functionalities to it.
@@ -54,6 +53,13 @@ type Connection struct {
 
 	// config represents connection configuration.
 	config Config
+
+	// helper is a middleware to connect connection to the storage to parse
+	// the inbound messages and subscribe, unsubscribe, and remove the connection
+	// from the storage.
+	helper helper
+
+	ctx context.Context
 }
 
 // NewConnection creates a new instance of Connection that wraps the input
@@ -70,7 +76,7 @@ type Connection struct {
 func NewConnection(
 	ctx context.Context,
 	conn *websocket.Conn,
-	msgProcessor messageProcessor,
+	helper helper,
 	options ...Option,
 ) *Connection {
 	// setup connection configuration
@@ -90,9 +96,11 @@ func NewConnection(
 		cancel:    cancel,
 		send:      make(chan []byte, config.outboundBufferSize),
 		config:    *config,
+		helper:    helper,
+		ctx:       ctx,
 	}
 
-	go connWrapper.read(ctx, msgProcessor)
+	go connWrapper.read(ctx)
 	go connWrapper.write(ctx)
 
 	return connWrapper
@@ -151,9 +159,9 @@ func (c *Connection) Close() error {
 		c.mu.Unlock()
 
 		// NOTE: do not close the outbound channel here. It can cause panic.
-		// The
 
-		// TODO unsubscribe all the streams
+		// remove connection from the storage
+		c.helper.Remove(c.ctx, c.id)
 
 		// cancel the context to exist from read and write goroutines
 		c.cancel()
@@ -177,7 +185,7 @@ func (c *Connection) Close() error {
 //
 // If the message was valid, it will subscribe or unsubscribe to one
 // or more channels.
-func (c *Connection) read(ctx context.Context, msgProcessor messageProcessor) {
+func (c *Connection) read(ctx context.Context) {
 	defer func() {
 		// TODO log the close error
 		_ = c.Close()
@@ -226,13 +234,7 @@ func (c *Connection) read(ctx context.Context, msgProcessor messageProcessor) {
 			continue
 		}
 
-		if v := msgProcessor.Validate(message); !v.IsValid() {
-			// TODO log invalid message error
-			// TODO should we publish the error to the WS
-			continue
-		}
-
-		msgProcessor.ProcessMessage(ctx, c, message)
+		c.helper.ParseMessage(ctx, c, message)
 	}
 }
 

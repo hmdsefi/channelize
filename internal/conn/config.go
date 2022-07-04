@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hamed-yousefi/channelize/common/utils"
+	"github.com/hamed-yousefi/channelize/internal/common/utils"
 )
 
 const (

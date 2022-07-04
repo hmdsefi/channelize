@@ -7,8 +7,8 @@ package mock
 import (
 	"context"
 
-	"github.com/hamed-yousefi/channelize/channel"
-	"github.com/hamed-yousefi/channelize/common"
+	"github.com/hamed-yousefi/channelize/internal/channel"
+	"github.com/hamed-yousefi/channelize/internal/common"
 )
 
 type store interface {

@@ -8,9 +8,9 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/hamed-yousefi/channelize/channel"
-	"github.com/hamed-yousefi/channelize/common"
-	"github.com/hamed-yousefi/channelize/common/errorx"
+	"github.com/hamed-yousefi/channelize/internal/channel"
+	"github.com/hamed-yousefi/channelize/internal/common"
+	"github.com/hamed-yousefi/channelize/internal/common/errorx"
 )
 
 // store stores connections per channel.
