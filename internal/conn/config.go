@@ -22,7 +22,7 @@ const (
 	defaultPingPeriod = (defaultPongWait * 9) / 10
 )
 
-type pingMessageFunc func() []byte
+type PingMessageFunc func() []byte
 
 // Config represents the configuration that is needed to create a new Connection.
 type Config struct {
@@ -36,7 +36,7 @@ type Config struct {
 	pingPeriod time.Duration
 
 	// pingMessageFunc is a function that create ping messages.
-	pingMessageFunc pingMessageFunc
+	pingMessageFunc PingMessageFunc
 }
 
 func newDefaultConfig() *Config {
@@ -80,7 +80,7 @@ func WithPingPeriod(duration time.Duration) Option {
 	}
 }
 
-func WithPingMessageFunc(messageFunc pingMessageFunc) Option {
+func WithPingMessageFunc(messageFunc PingMessageFunc) Option {
 	return func(config *Config) {
 		if config == nil {
 			return

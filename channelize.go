@@ -1,9 +1,14 @@
+/**
+ * Copyright © 2022 Hamed Yousefi <hdyousefi@gmail.com>.
+ */
+
 package channelize
 
 import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -76,10 +81,10 @@ func (c *Channelize) MakeEchoHTTPHandler(appCtx context.Context, upgrader websoc
 	}
 }
 
-// MakeEchoHTTPHandler makes a built-in HTTP handler function. The client should
+// MakeHTTPHandler makes a built-in HTTP handler function. The client should
 // provide the websocket.Upgrader. It automatically creates the websocket.Conn
 // and conn.Connection.
-func (c *Channelize) makeHTTPHandler(appCtx context.Context, upgrader websocket.Upgrader, options ...conn.Option) http.HandlerFunc {
+func (c *Channelize) MakeHTTPHandler(appCtx context.Context, upgrader websocket.Upgrader, options ...conn.Option) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -108,4 +113,24 @@ func RegisterPublicChannel(channelStr string) channel.Channel {
 // a list of created channels.
 func RegisterPublicChannels(channels ...string) []channel.Channel {
 	return channel.RegisterPublicChannels(channels...)
+}
+
+// WithOutboundBufferSize sets the outbound buffer size.
+func WithOutboundBufferSize(size int) conn.Option {
+	return conn.WithOutboundBufferSize(size)
+}
+
+// WithPongWait sets the pong wait duration.
+func WithPongWait(duration time.Duration) conn.Option {
+	return conn.WithPongWait(duration)
+}
+
+// WithPingPeriod sets the ping period.
+func WithPingPeriod(duration time.Duration) conn.Option {
+	return conn.WithPingPeriod(duration)
+}
+
+// WithPingMessageFunc sets the ping function. Client send customized ping messages.
+func WithPingMessageFunc(messageFunc conn.PingMessageFunc) conn.Option {
+	return conn.WithPingMessageFunc(messageFunc)
 }
