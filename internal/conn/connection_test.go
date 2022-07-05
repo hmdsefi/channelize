@@ -14,6 +14,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamed-yousefi/channelize/internal/common/log"
 )
 
 const (
@@ -86,7 +88,7 @@ func (s *Handler) makeWebsocketHandler(t *testing.T) http.HandlerFunc {
 		if err != nil {
 			t.Fatal(err)
 		}
-		s.connections = append(s.connections, NewConnection(s.ctx, conn, s.mockMsgProcessor))
+		s.connections = append(s.connections, NewConnection(s.ctx, conn, s.mockMsgProcessor, log.NewDefaultLogger()))
 	}
 }
 

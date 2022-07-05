@@ -21,6 +21,8 @@ const (
 	ErrorMsgMarshalOutboundMessage  = "failed to marshal outbound message"
 	ErrorMsgUnsupportedMessageType  = "message type is not supported"
 	ErrorMsgChannelsIsEmpty         = "channels list is empty, minimum size is 1"
+	ErrorMsgFailedToCloseConnection = "failed to close connection"
+	ErrorMsgFailedToSetReadDeadline = "failed to set read deadline"
 )
 
 var (

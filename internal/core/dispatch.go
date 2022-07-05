@@ -11,6 +11,7 @@ import (
 	"github.com/hamed-yousefi/channelize/internal/channel"
 	"github.com/hamed-yousefi/channelize/internal/common"
 	"github.com/hamed-yousefi/channelize/internal/common/errorx"
+	"github.com/hamed-yousefi/channelize/log"
 )
 
 // store stores connections per channel.
@@ -22,12 +23,16 @@ type store interface {
 // Dispatch is a mechanism to send the public and private messages to the
 // available connection per channel. It uses a storage to get the connections.
 type Dispatch struct {
-	store store
+	store  store
+	logger log.Logger
 }
 
 // NewDispatch creates a new instance of Dispatch struct.
-func NewDispatch(store store) *Dispatch {
-	return &Dispatch{store: store}
+func NewDispatch(store store, logger log.Logger) *Dispatch {
+	return &Dispatch{
+		store:  store,
+		logger: logger,
+	}
 }
 
 // SendPublicMessage sends the input message to the available connections of
@@ -51,7 +56,11 @@ func (d *Dispatch) SendPublicMessage(ctx context.Context, ch channel.Channel, me
 
 	for _, connection := range connections {
 		if err := connection.SendMessage(msgOutBytes); err != nil {
-			// TODO log the error
+			d.logger.Error(
+				"failed to send public message to the inbound buffer",
+				common.LogFieldID, connection.ID(),
+				common.LogFieldError, err.Error(),
+			)
 		}
 	}
 

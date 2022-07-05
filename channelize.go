@@ -14,8 +14,11 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/hamed-yousefi/channelize/internal/channel"
+	"github.com/hamed-yousefi/channelize/internal/common"
+	internalLog "github.com/hamed-yousefi/channelize/internal/common/log"
 	"github.com/hamed-yousefi/channelize/internal/conn"
 	"github.com/hamed-yousefi/channelize/internal/core"
+	"github.com/hamed-yousefi/channelize/log"
 )
 
 // connectionHelper is a middleware between connection and storage. It helps
@@ -40,6 +43,24 @@ type dispatcher interface {
 	SendPublicMessage(ctx context.Context, ch channel.Channel, message interface{}) error
 }
 
+type Option func(*Config)
+
+type Config struct {
+	logger log.Logger
+}
+
+func newDefaultConfig() *Config {
+	return &Config{
+		logger: internalLog.NewDefaultLogger(),
+	}
+}
+
+func WithLogger(logger log.Logger) func(config *Config) {
+	return func(config *Config) {
+		config.logger = logger
+	}
+}
+
 // Channelize wraps all the internal implementations and restricts the exposed
 // functionalities to reduce the public API surface.
 //
@@ -47,22 +68,30 @@ type dispatcher interface {
 type Channelize struct {
 	helper     connectionHelper
 	dispatcher dispatcher
+	logger     log.Logger
 }
 
 // NewChannelize creates new instance of Channelize struct. It uses in-memory
 // storage by default to store the connections and mapping between the connections and
 // channels.
-func NewChannelize() *Channelize {
+func NewChannelize(options ...Option) *Channelize {
+	config := newDefaultConfig()
+	for _, option := range options {
+		option(config)
+	}
+
 	storage := core.NewCache()
+
 	return &Channelize{
 		helper:     newHelper(storage),
-		dispatcher: core.NewDispatch(storage),
+		dispatcher: core.NewDispatch(storage, config.logger),
+		logger:     config.logger,
 	}
 }
 
 // CreateConnection creates a `conn.Connection` object with the input options.
 func (c *Channelize) CreateConnection(ctx context.Context, wsConn *websocket.Conn, options ...conn.Option) *conn.Connection {
-	return conn.NewConnection(ctx, wsConn, c.helper, options...)
+	return conn.NewConnection(ctx, wsConn, c.helper, c.logger, options...)
 }
 
 // MakeEchoHTTPHandler makes an echo HTTP handler function. The client should
@@ -88,7 +117,7 @@ func (c *Channelize) MakeHTTPHandler(appCtx context.Context, upgrader websocket.
 	return func(w http.ResponseWriter, r *http.Request) {
 		wsConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			// TODO log the error
+			c.logger.Error("failed to create websocket.Conn", common.LogFieldError, err.Error())
 			http.Error(
 				w,
 				fmt.Sprintf("failt to create websocket connection: %s", err),

@@ -15,6 +15,7 @@ import (
 
 	"github.com/hamed-yousefi/channelize/internal/channel"
 	"github.com/hamed-yousefi/channelize/internal/common"
+	"github.com/hamed-yousefi/channelize/internal/common/log"
 	"github.com/hamed-yousefi/channelize/internal/core/mock"
 )
 
@@ -42,7 +43,7 @@ func TestDispatch_SendPublicMessage(t *testing.T) {
 	ctx := context.Background()
 
 	conn := mock.NewConnection(connID)
-	dispatch := NewDispatch(mock.NewStore([]common.ConnectionWrapper{conn}))
+	dispatch := NewDispatch(mock.NewStore([]common.ConnectionWrapper{conn}), log.NewDefaultLogger())
 
 	err := dispatch.SendPublicMessage(ctx, testChannel, expectedData)
 	if err != nil {
@@ -98,7 +99,7 @@ func TestDispatch_SendPublicMessage_Concurrent(t *testing.T) {
 	}
 
 	// store the created connections into the storage and create dispatch with it.
-	dispatch := NewDispatch(mock.NewStore(connections))
+	dispatch := NewDispatch(mock.NewStore(connections), log.NewDefaultLogger())
 
 	// send multiple public messages concurrently
 	parallelSendCount := 100
