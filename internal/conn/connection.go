@@ -12,8 +12,10 @@ import (
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 
+	"github.com/hamed-yousefi/channelize/internal/common"
 	"github.com/hamed-yousefi/channelize/internal/common/errorx"
 	"github.com/hamed-yousefi/channelize/internal/common/utils"
+	"github.com/hamed-yousefi/channelize/log"
 )
 
 // helper connects connection to the storage.
@@ -59,7 +61,8 @@ type Connection struct {
 	// from the storage.
 	helper helper
 
-	ctx context.Context
+	ctx    context.Context
+	logger log.Logger
 }
 
 // NewConnection creates a new instance of Connection that wraps the input
@@ -77,6 +80,7 @@ func NewConnection(
 	ctx context.Context,
 	conn *websocket.Conn,
 	helper helper,
+	logger log.Logger,
 	options ...Option,
 ) *Connection {
 	// setup connection configuration
@@ -98,6 +102,7 @@ func NewConnection(
 		config:    *config,
 		helper:    helper,
 		ctx:       ctx,
+		logger:    logger,
 	}
 
 	go connWrapper.read(ctx)
@@ -187,13 +192,15 @@ func (c *Connection) Close() error {
 // or more channels.
 func (c *Connection) read(ctx context.Context) {
 	defer func() {
-		// TODO log the close error
-		_ = c.Close()
+		err := c.Close()
+		if err != nil {
+			c.logger.Error(errorx.ErrorMsgFailedToCloseConnection, common.LogFieldID, c.id, common.LogFieldError, err)
+		}
 	}()
 
 	// set pong message expiration time.
 	if err := c.conn.SetReadDeadline(utils.Now().Add(c.config.pongWait)); err != nil {
-		// TODO log the error
+		c.logger.Error(errorx.ErrorMsgFailedToSetReadDeadline, "id", c.id, "error", err.Error())
 		return
 	}
 
@@ -201,7 +208,7 @@ func (c *Connection) read(ctx context.Context) {
 	c.conn.SetPongHandler(func(in string) error {
 		// update pong message expiration time
 		if err := c.conn.SetReadDeadline(utils.Now().Add(c.config.pongWait)); err != nil {
-			// TODO log the error
+			c.logger.Error(errorx.ErrorMsgFailedToSetReadDeadline, common.LogFieldID, c.id, common.LogFieldError, err)
 			return err
 		}
 
@@ -220,7 +227,7 @@ func (c *Connection) read(ctx context.Context) {
 
 		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
-			// TODO log the read message error
+			c.logger.Error("failed to read message", "id", c.id, "error", err.Error())
 			return
 		}
 
@@ -260,8 +267,10 @@ func (c *Connection) write(ctx context.Context) {
 
 	defer func() {
 		pingTicker.Stop()
-		// TODO log the close error
-		_ = c.Close()
+		err := c.Close()
+		if err != nil {
+			c.logger.Error(errorx.ErrorMsgFailedToCloseConnection, common.LogFieldID, c.id, common.LogFieldError, err)
+		}
 	}()
 
 	for {
@@ -277,7 +286,7 @@ func (c *Connection) write(ctx context.Context) {
 
 			// write the ping message to the peer.
 			if err := c.conn.WriteMessage(websocket.PingMessage, c.config.pingMessageFunc()); err != nil {
-				// TODO log the error
+				c.logger.Error("failed to write ping message", "id", c.id, "error", err.Error())
 				return
 			}
 			c.mu.RUnlock()
@@ -290,7 +299,7 @@ func (c *Connection) write(ctx context.Context) {
 
 			// write the message to the peer.
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				// TODO log the error
+				c.logger.Error("failed to write message", "id", c.id, "error", err.Error())
 				return
 			}
 			c.mu.RUnlock()
