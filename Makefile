@@ -16,17 +16,22 @@ all: test
 
 .PHONY: test
 test: sync
-	$(info running tests)
+	$(info $(M) running tests)
 	 richgo test -v ./...
+
+.PHONY: build
+build:
+	$(info $(M) build and compile)
+	 go build ./...
 
 .PHONY: codecov
 codecov: sync
-	$(info running tests coverage)
+	$(info $(M) running tests coverage)
 	sh build/script/coverage.sh
 
 .PHONY: sync
 sync: 
-	$(info downloading dependencies)
+	$(info $(M) downloading dependencies)
 	go get -v ./...
 
 .PHONY: fmt

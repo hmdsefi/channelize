@@ -44,6 +44,7 @@ type dispatcher interface {
 
 type Option func(*Config)
 
+// Config represents Channelize configuration.
 type Config struct {
 	logger log.Logger
 }
