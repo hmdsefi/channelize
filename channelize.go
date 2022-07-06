@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/labstack/echo/v4"
 
 	"github.com/hamed-yousefi/channelize/internal/channel"
 	"github.com/hamed-yousefi/channelize/internal/common"
@@ -45,6 +44,7 @@ type dispatcher interface {
 
 type Option func(*Config)
 
+// Config represents Channelize configuration.
 type Config struct {
 	logger log.Logger
 }
@@ -94,22 +94,6 @@ func (c *Channelize) CreateConnection(ctx context.Context, wsConn *websocket.Con
 	return conn.NewConnection(ctx, wsConn, c.helper, c.logger, options...)
 }
 
-// MakeEchoHTTPHandler makes an echo HTTP handler function. The client should
-// provide the websocket.Upgrader. It automatically creates the websocket.Conn
-// and conn.Connection.
-func (c *Channelize) MakeEchoHTTPHandler(appCtx context.Context, upgrader websocket.Upgrader, options ...conn.Option) echo.HandlerFunc {
-	return func(ctx echo.Context) error {
-		wsConn, err := upgrader.Upgrade(ctx.Response().Writer, ctx.Request(), nil)
-		if err != nil {
-			return err
-		}
-
-		c.CreateConnection(appCtx, wsConn, options...)
-
-		return nil
-	}
-}
-
 // MakeHTTPHandler makes a built-in HTTP handler function. The client should
 // provide the websocket.Upgrader. It automatically creates the websocket.Conn
 // and conn.Connection.
@@ -128,6 +112,11 @@ func (c *Channelize) MakeHTTPHandler(appCtx context.Context, upgrader websocket.
 
 		c.CreateConnection(appCtx, wsConn, options...)
 	}
+}
+
+// SendPublicMessage sends the message to the input channel.
+func (c *Channelize) SendPublicMessage(ctx context.Context, ch channel.Channel, message interface{}) error {
+	return c.dispatcher.SendPublicMessage(ctx, ch, message)
 }
 
 // RegisterPublicChannel creates and registers a new channel by calling the

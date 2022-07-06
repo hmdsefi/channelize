@@ -6,6 +6,7 @@ package conn
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -227,6 +228,13 @@ func (c *Connection) read(ctx context.Context) {
 
 		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
+			// check if error is websocket connection close error, return
+			// without logging the error.
+			var wsErr *websocket.CloseError
+			if errors.As(err, &wsErr) {
+				return
+			}
+
 			c.logger.Error("failed to read message", "id", c.id, "error", err.Error())
 			return
 		}
