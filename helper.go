@@ -25,7 +25,7 @@ type store interface {
 	Unsubscribe(ctx context.Context, connID string, channels ...channel.Channel)
 
 	// Remove removes all the subscriptions for the input connection.
-	Remove(ctx context.Context, connID string)
+	Remove(ctx context.Context, connID string, userID *string)
 }
 
 // helper provides functionalities to the connection to register and unregister
@@ -35,7 +35,9 @@ type helper struct {
 }
 
 func newHelper(store store) *helper {
-	return &helper{store: store}
+	return &helper{
+		store: store,
+	}
 }
 
 // ParseMessage deserializes the inbound messages and calls the storage
@@ -43,6 +45,10 @@ func newHelper(store store) *helper {
 //
 // It also validates the inbound messages and publishes the errors to
 // the error channel.
+//
+// If client message contains auth token, it validates the token. If token
+// is valid, it adds the token object to the client's connection. Otherwise,
+// publishes the validation error to the error channel.
 func (h *helper) ParseMessage(ctx context.Context, connection *conn.Connection, data []byte) {
 	msg, err := core.UnmarshalMessageIn(data)
 	if err != nil {
@@ -55,6 +61,14 @@ func (h *helper) ParseMessage(ctx context.Context, connection *conn.Connection, 
 		return
 	}
 
+	// validate token and store it in connection if it exists in the message.
+	if msg.Params.HasToken() {
+		if err := connection.AuthenticateAndStore(*msg.Params.Token); err != nil {
+			// TODO write error to the websocket connection 'error' channel
+			return
+		}
+	}
+
 	switch msg.MessageType {
 	case core.MessageTypeSubscribe:
 		h.store.Subscribe(ctx, connection, msg.Params.Channels...)
@@ -64,6 +78,6 @@ func (h *helper) ParseMessage(ctx context.Context, connection *conn.Connection, 
 }
 
 // Remove removes a connection from the storage.
-func (h *helper) Remove(ctx context.Context, connID string) {
-	h.store.Remove(ctx, connID)
+func (h *helper) Remove(ctx context.Context, connID string, userID *string) {
+	h.store.Remove(ctx, connID, userID)
 }

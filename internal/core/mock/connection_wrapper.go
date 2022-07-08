@@ -5,14 +5,18 @@
 package mock
 
 type Connection struct {
-	id   string
-	send chan []byte
+	id       string
+	userID   *string
+	send     chan []byte
+	authFunc func() error
 }
 
-func NewConnection(id string) *Connection {
+func NewConnection(id string, userID *string, authFunc func() error) *Connection {
 	return &Connection{
-		id:   id,
-		send: make(chan []byte, 256),
+		id:       id,
+		userID:   userID,
+		send:     make(chan []byte, 256),
+		authFunc: authFunc,
 	}
 }
 
@@ -25,6 +29,14 @@ func NewConnectionWithChan(id string, send chan []byte) *Connection {
 
 func (c Connection) ID() string {
 	return c.id
+}
+
+func (c Connection) UserID() *string {
+	return c.userID
+}
+
+func (c Connection) Authenticate() error {
+	return c.authFunc()
 }
 
 func (c Connection) SendMessage(data []byte) error {

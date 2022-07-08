@@ -17,7 +17,16 @@ all: test
 .PHONY: test
 test: sync
 	$(info $(M) running tests)
-	 richgo test -v ./...
+	 go test ./...
+
+.PHONY: coverage
+coverage: sync
+	$(info $(M) running tests coverage)
+	 go test -coverprofile=c.out ./...;\
+  	 go tool cover -func=c.out;\
+  	 rm c.out
+
+
 
 .PHONY: build
 build:

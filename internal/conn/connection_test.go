@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hamed-yousefi/channelize/auth"
 	"github.com/hamed-yousefi/channelize/internal/common/log"
 )
 
@@ -41,7 +42,7 @@ func newMockHelper(receive chan<- string) *MockMessageProcessor {
 	}
 }
 
-func (m MockMessageProcessor) Remove(_ context.Context, connID string) {
+func (m MockMessageProcessor) Remove(_ context.Context, _ string, _ *string) {
 }
 
 func (m MockMessageProcessor) ParseMessage(_ context.Context, _ *Connection, message []byte) {
@@ -50,6 +51,10 @@ func (m MockMessageProcessor) ParseMessage(_ context.Context, _ *Connection, mes
 
 func (m MockMessageProcessor) close() {
 	close(m.receive)
+}
+
+func testAuthenticateFunc(token string) (*auth.Token, error) {
+	return &auth.Token{}, nil
 }
 
 type Handler struct {
@@ -88,7 +93,12 @@ func (s *Handler) makeWebsocketHandler(t *testing.T) http.HandlerFunc {
 		if err != nil {
 			t.Fatal(err)
 		}
-		s.connections = append(s.connections, NewConnection(s.ctx, conn, s.mockMsgProcessor, log.NewDefaultLogger()))
+		s.connections = append(s.connections, NewConnection(
+			s.ctx, conn,
+			s.mockMsgProcessor,
+			testAuthenticateFunc,
+			log.NewDefaultLogger(),
+		))
 	}
 }
 
@@ -146,6 +156,33 @@ func TestNewConnection(t *testing.T) {
 	})
 
 	_ = handler.Close()
+}
+
+func TestConnection_UserID(t *testing.T) {
+	t.Run("nil token", func(t *testing.T) {
+		conn := Connection{}
+		assert.Nil(t, conn.UserID())
+	})
+
+	t.Run("empty userID", func(t *testing.T) {
+		conn := Connection{
+			token: &auth.Token{},
+		}
+		assert.Nil(t, conn.UserID())
+	})
+
+	t.Run("valid userID", func(t *testing.T) {
+		expectedUserID := "test-user-id"
+		conn := Connection{
+			token: &auth.Token{
+				UserID: expectedUserID,
+			},
+		}
+
+		actualUserID := conn.UserID()
+		require.NotNil(t, actualUserID)
+		assert.Equal(t, expectedUserID, *actualUserID)
+	})
 }
 
 // TODO test concurrent connections

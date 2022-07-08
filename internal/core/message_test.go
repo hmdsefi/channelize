@@ -55,12 +55,28 @@ func TestUnmarshalMessageIn(t *testing.T) {
 // TestMessageIn_Validate registers a set of channels and test validation of different messages.
 func TestMessageIn_Validate(t *testing.T) {
 	channels := registerChannels()
+	privateChannel := channel.RegisterPrivateChannel("privateChan")
 
-	t.Run("valid messageIn", func(t *testing.T) {
+	t.Run("valid messageIn: public channels", func(t *testing.T) {
 		invalidMsg := messageIn{
 			MessageType: MessageTypeSubscribe,
 			Params: paramIn{
 				Channels: channels,
+			},
+		}
+
+		result := invalidMsg.Validate()
+		expectedResult := new(validation.Result)
+		assert.Equal(t, expectedResult, result)
+	})
+
+	t.Run("valid messageIn: private channels", func(t *testing.T) {
+		testAuthToken := "test-auth-token" // nolint
+		invalidMsg := messageIn{
+			MessageType: MessageTypeSubscribe,
+			Params: paramIn{
+				Channels: append(channels, privateChannel),
+				Token:    &testAuthToken,
 			},
 		}
 
@@ -105,7 +121,27 @@ func TestMessageIn_Validate(t *testing.T) {
 
 		result := invalidMsg.Validate()
 		expectedResult := new(validation.Result)
-		expectedResult.AddFieldError(validation.FieldChannels+":"+unregisteredChannel, errorx.ErrorMsgChannelsIsEmpty)
+		expectedResult.AddFieldError(
+			validation.SubField(validation.FieldChannels, unregisteredChannel),
+			errorx.ErrorMsgUnsupportedChannel,
+		)
+		assert.Equal(t, expectedResult, result)
+	})
+
+	t.Run("invalid messageIn: auth token is missing", func(t *testing.T) {
+		invalidMsg := messageIn{
+			MessageType: MessageTypeSubscribe,
+			Params: paramIn{
+				Channels: append(channels, privateChannel),
+			},
+		}
+
+		result := invalidMsg.Validate()
+		expectedResult := new(validation.Result)
+		expectedResult.AddFieldError(
+			validation.SubField(validation.FieldChannels, privateChannel.String()),
+			errorx.ErrorMsgAuthTokenIsMissing,
+		)
 		assert.Equal(t, expectedResult, result)
 	})
 }

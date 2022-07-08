@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/hamed-yousefi/channelize/auth"
 	"github.com/hamed-yousefi/channelize/internal/channel"
 	"github.com/hamed-yousefi/channelize/internal/common"
 	internalLog "github.com/hamed-yousefi/channelize/internal/common/log"
@@ -31,7 +32,7 @@ type connectionHelper interface {
 	ParseMessage(ctx context.Context, connection *conn.Connection, data []byte)
 
 	// Remove removes the connection from the storage.
-	Remove(ctx context.Context, connID string)
+	Remove(ctx context.Context, connID string, userID *string)
 }
 
 // dispatcher is a mechanism to send the public messages to the existing connections.
@@ -40,6 +41,10 @@ type dispatcher interface {
 	// subscribed to the input channel. It doesn't authenticate the connection,
 	// since the message is public.
 	SendPublicMessage(ctx context.Context, ch channel.Channel, message interface{}) error
+
+	// SendPrivateMessage sends the input message to the input channel if the client
+	// already authenticated with the input userID. Otherwise, skips and returns.
+	SendPrivateMessage(ctx context.Context, ch channel.Channel, userID string, message interface{}) error
 }
 
 type Option func(*Config)
@@ -69,12 +74,13 @@ type Channelize struct {
 	helper     connectionHelper
 	dispatcher dispatcher
 	logger     log.Logger
+	authFunc   auth.AuthenticateFunc
 }
 
 // NewChannelize creates new instance of Channelize struct. It uses in-memory
 // storage by default to store the connections and mapping between the connections and
 // channels.
-func NewChannelize(options ...Option) *Channelize {
+func NewChannelize(authFunc auth.AuthenticateFunc, options ...Option) *Channelize {
 	config := newDefaultConfig()
 	for _, option := range options {
 		option(config)
@@ -86,12 +92,13 @@ func NewChannelize(options ...Option) *Channelize {
 		helper:     newHelper(storage),
 		dispatcher: core.NewDispatch(storage, config.logger),
 		logger:     config.logger,
+		authFunc:   authFunc,
 	}
 }
 
 // CreateConnection creates a `conn.Connection` object with the input options.
 func (c *Channelize) CreateConnection(ctx context.Context, wsConn *websocket.Conn, options ...conn.Option) *conn.Connection {
-	return conn.NewConnection(ctx, wsConn, c.helper, c.logger, options...)
+	return conn.NewConnection(ctx, wsConn, c.helper, c.authFunc, c.logger, options...)
 }
 
 // MakeHTTPHandler makes a built-in HTTP handler function. The client should
@@ -117,6 +124,11 @@ func (c *Channelize) MakeHTTPHandler(appCtx context.Context, upgrader websocket.
 // SendPublicMessage sends the message to the input channel.
 func (c *Channelize) SendPublicMessage(ctx context.Context, ch channel.Channel, message interface{}) error {
 	return c.dispatcher.SendPublicMessage(ctx, ch, message)
+}
+
+// SendPrivateMessage sends the message to the input channel.
+func (c *Channelize) SendPrivateMessage(ctx context.Context, ch channel.Channel, userID string, message interface{}) error {
+	return c.dispatcher.SendPrivateMessage(ctx, ch, userID, message)
 }
 
 // RegisterPublicChannel creates and registers a new channel by calling the
