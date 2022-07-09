@@ -12,17 +12,27 @@ const (
 
 	CodeFailedToUnmarshalMessage = 1500
 	CodeFailedToMarshalMessage   = 1501
+
+	CodeAuthFuncIsMissing  = 2000
+	CodeAuthTokenIsMissing = 2001
+	CodeAuthTokenIsExpired = 2002
 )
 
 const (
-	ErrorMsgConnectionClosed        = "websocket connection is closed"
-	ErrorMsgOutboundBufferIsFull    = "connection outbound buffer is full"
-	ErrorMsgUnmarshalInboundMessage = "failed to unmarshal inbound message"
-	ErrorMsgMarshalOutboundMessage  = "failed to marshal outbound message"
-	ErrorMsgUnsupportedMessageType  = "message type is not supported"
-	ErrorMsgChannelsIsEmpty         = "channels list is empty, minimum size is 1"
-	ErrorMsgFailedToCloseConnection = "failed to close connection"
-	ErrorMsgFailedToSetReadDeadline = "failed to set read deadline"
+	ErrorMsgConnectionClosed             = "websocket connection is closed"
+	ErrorMsgOutboundBufferIsFull         = "connection outbound buffer is full"
+	ErrorMsgUnmarshalInboundMessage      = "failed to unmarshal inbound message"
+	ErrorMsgMarshalOutboundMessage       = "failed to marshal outbound message"
+	ErrorMsgUnsupportedMessageType       = "message type is not supported"
+	ErrorMsgChannelsIsEmpty              = "channels list is empty, minimum size is 1"
+	ErrorMsgUnsupportedChannel           = "channel is not supported"
+	ErrorMsgInvalidChannelType           = "channel should be either private or public"
+	ErrorMsgAuthTokenIsMissing           = "auth token is missing for the private channel" // nolint
+	ErrorMsgFailedToCloseConnection      = "failed to close connection"
+	ErrorMsgFailedToSetReadDeadline      = "failed to set read deadline"
+	ErrorMsgAuthFuncIsMissing            = "authentication function to validate private auth token"
+	ErrorMsgConnectionAuthTokenIsMissing = "connection auth token is nil"
+	ErrorMsgAuthTokenIsExpired           = "auth token is expired" // nolint
 )
 
 var (
@@ -31,6 +41,9 @@ var (
 		CodeOutboundBufferIsFull:     ErrorMsgOutboundBufferIsFull,
 		CodeFailedToUnmarshalMessage: ErrorMsgUnmarshalInboundMessage,
 		CodeFailedToMarshalMessage:   ErrorMsgMarshalOutboundMessage,
+		CodeAuthFuncIsMissing:        ErrorMsgAuthFuncIsMissing,
+		CodeAuthTokenIsMissing:       ErrorMsgConnectionAuthTokenIsMissing,
+		CodeAuthTokenIsExpired:       ErrorMsgAuthTokenIsExpired,
 	}
 )
 

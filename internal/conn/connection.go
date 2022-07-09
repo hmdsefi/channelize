@@ -7,12 +7,14 @@ package conn
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 
+	"github.com/hamed-yousefi/channelize/auth"
 	"github.com/hamed-yousefi/channelize/internal/common"
 	"github.com/hamed-yousefi/channelize/internal/common/errorx"
 	"github.com/hamed-yousefi/channelize/internal/common/utils"
@@ -22,7 +24,7 @@ import (
 // helper connects connection to the storage.
 type helper interface {
 	ParseMessage(ctx context.Context, conn *Connection, message []byte)
-	Remove(ctx context.Context, connID string)
+	Remove(ctx context.Context, connID string, userID *string)
 }
 
 // Connection wraps the websocket connection and add more functionalities to it.
@@ -57,10 +59,15 @@ type Connection struct {
 	// config represents connection configuration.
 	config Config
 
+	// token represents the client auth token details.
+	token *auth.Token
+
 	// helper is a middleware to connect connection to the storage to parse
 	// the inbound messages and subscribe, unsubscribe, and remove the connection
 	// from the storage.
 	helper helper
+
+	authenticate auth.AuthenticateFunc
 
 	ctx    context.Context
 	logger log.Logger
@@ -81,6 +88,7 @@ func NewConnection(
 	ctx context.Context,
 	conn *websocket.Conn,
 	helper helper,
+	authFunc auth.AuthenticateFunc,
 	logger log.Logger,
 	options ...Option,
 ) *Connection {
@@ -95,15 +103,16 @@ func NewConnection(
 	ctx, cancel := context.WithCancel(ctx)
 
 	connWrapper := &Connection{
-		id:        uuid.NewV4().String(),
-		conn:      conn,
-		connected: true,
-		cancel:    cancel,
-		send:      make(chan []byte, config.outboundBufferSize),
-		config:    *config,
-		helper:    helper,
-		ctx:       ctx,
-		logger:    logger,
+		id:           uuid.NewV4().String(),
+		conn:         conn,
+		connected:    true,
+		cancel:       cancel,
+		send:         make(chan []byte, config.outboundBufferSize),
+		config:       *config,
+		helper:       helper,
+		authenticate: authFunc,
+		ctx:          ctx,
+		logger:       logger,
 	}
 
 	go connWrapper.read(ctx)
@@ -115,6 +124,55 @@ func NewConnection(
 // ID returns the connection id.
 func (c *Connection) ID() string {
 	return c.id
+}
+
+// UserID return the token userID if token is not nil and userID is not empty.
+func (c *Connection) UserID() *string {
+	if c.token != nil && strings.TrimSpace(c.token.UserID) != "" {
+		userID := c.token.UserID
+		return &userID
+	}
+
+	return nil
+}
+
+// AuthenticateAndStore validates the input token by calling the auth function
+// that client already implemented. Stores the token details in the receiver if
+// it is valid. Otherwise, returns err.
+func (c *Connection) AuthenticateAndStore(token string) error {
+	if c.authenticate == nil {
+		return errorx.NewChannelizeError(errorx.CodeAuthFuncIsMissing)
+	}
+
+	var err error
+	c.token, err = c.authenticate(token)
+	if err != nil {
+		return err
+	}
+
+	if utils.Now().Unix() > c.token.ExpiresAt {
+		return errorx.NewChannelizeError(errorx.CodeAuthTokenIsExpired)
+	}
+
+	return nil
+}
+
+// Authenticate validates the existing token and update the connection token
+// if the token has been updated.
+func (c *Connection) Authenticate() error {
+	if c.token != nil {
+		return c.AuthenticateAndStore(c.token.Token)
+	}
+
+	// check if current timestamp is less than token expires_at timestamp then the
+	// validated token is still valid.
+	if utils.Now().Unix() < c.token.ExpiresAt {
+		return nil
+	}
+
+	// if current timestamp passed the token expires_at timestamp validate token
+	// again. It is possible that the token lifetime has been extended.
+	return errorx.NewChannelizeError(errorx.CodeAuthTokenIsMissing)
 }
 
 // SendMessage sends the input message to the outbound channel.
@@ -167,7 +225,7 @@ func (c *Connection) Close() error {
 		// NOTE: do not close the outbound channel here. It can cause panic.
 
 		// remove connection from the storage
-		c.helper.Remove(c.ctx, c.id)
+		c.helper.Remove(c.ctx, c.id, c.UserID())
 
 		// cancel the context to exist from read and write goroutines
 		c.cancel()

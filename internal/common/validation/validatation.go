@@ -5,6 +5,10 @@
 package validation
 
 const (
+	defaultSubFieldSeparator = ":"
+)
+
+const (
 	FieldType     = "type"
 	FieldChannels = "channels"
 	FieldToken    = "token"
@@ -48,4 +52,10 @@ func (r *Result) AddFieldError(field string, err string) {
 // Otherwise, returns true.
 func (r Result) IsValid() bool {
 	return !(r.Error != "" || r.Code != "" || len(r.FieldErrors) != 0)
+}
+
+// SubField creates a field that includes parent and child that separated by
+// a default separator.
+func SubField(field string, child string) string {
+	return field + defaultSubFieldSeparator + child
 }

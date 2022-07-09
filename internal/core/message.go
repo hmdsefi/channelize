@@ -6,6 +6,7 @@ package core
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/hamed-yousefi/channelize/internal/channel"
 	"github.com/hamed-yousefi/channelize/internal/common/errorx"
@@ -45,6 +46,12 @@ func (m MessageType) isSupportedMessageType() bool {
 
 type paramIn struct {
 	Channels []channel.Channel `json:"channels"`
+	Token    *string           `json:"token"`
+}
+
+// HasToken returns true if token field is not nil or empty string.
+func (p paramIn) HasToken() bool {
+	return p.Token != nil && len(strings.TrimSpace(*p.Token)) > 0
 }
 
 // messageIn represents the inbound message. It includes an action and
@@ -82,8 +89,29 @@ func (m messageIn) Validate() *validation.Result {
 
 	if len(m.Params.Channels) != 0 {
 		for _, ch := range m.Params.Channels {
+			// check if the channel is supported
 			if !ch.IsSupportedChannel() {
-				out.AddFieldError(validation.FieldChannels+":"+ch.String(), errorx.ErrorMsgChannelsIsEmpty)
+				out.AddFieldError(
+					validation.SubField(validation.FieldChannels, ch.String()),
+					errorx.ErrorMsgUnsupportedChannel,
+				)
+				continue
+			}
+
+			// check if the channel is not private then it should be public
+			if !ch.IsSupportedPrivateChannel() && !ch.IsSupportedPublicChannel() {
+				out.AddFieldError(
+					validation.SubField(validation.FieldChannels, ch.String()),
+					errorx.ErrorMsgInvalidChannelType,
+				)
+			}
+
+			// check if the channel is private, token should exist
+			if ch.IsSupportedPrivateChannel() && !m.Params.HasToken() {
+				out.AddFieldError(
+					validation.SubField(validation.FieldChannels, ch.String()),
+					errorx.ErrorMsgAuthTokenIsMissing,
+				)
 			}
 		}
 	}

@@ -28,6 +28,10 @@ type Cache struct {
 	// map[channel]map[connID]connection
 	channel2Connections map[channel.Channel]map[string]common.ConnectionWrapper
 
+	// userID2ConnectionID stores a mapping between userID and user's connectionID.
+	// map[userID]connectionID
+	userID2ConnectionID map[string]string
+
 	sync.RWMutex
 }
 
@@ -36,6 +40,7 @@ func NewCache() *Cache {
 	return &Cache{
 		connectionID2Channels: make(map[string]map[channel.Channel]struct{}),
 		channel2Connections:   make(map[channel.Channel]map[string]common.ConnectionWrapper),
+		userID2ConnectionID:   make(map[string]string),
 	}
 }
 
@@ -52,6 +57,12 @@ func (c *Cache) Subscribe(_ context.Context, conn common.ConnectionWrapper, chan
 	// the channel map for it to prevent nil pointer panic.
 	if _, exists := c.connectionID2Channels[conn.ID()]; !exists {
 		c.connectionID2Channels[conn.ID()] = make(map[channel.Channel]struct{})
+	}
+
+	// check if connection has userID, add it to the map.
+	userID := conn.UserID()
+	if userID != nil {
+		c.userID2ConnectionID[*userID] = conn.ID()
 	}
 
 	// iterate over the input channel and store the subscription.
@@ -79,12 +90,30 @@ func (c *Cache) Unsubscribe(_ context.Context, connID string, channels ...channe
 	}
 }
 
+// UnsubscribeUserID removes the input channels subscription from the internal maps.
+//
+// This function is thread-safe and multiple goroutines can unsubscribe
+// a list of channel concurrently.
+//
+// It removes the userID and connID mapping from the storage. The main usage of this
+// function is when the auth token is expired and there is no need to validate token
+// again. To subscribe again, client should send the channels with token again.
+func (c *Cache) UnsubscribeUserID(_ context.Context, connID string, userID string, ch channel.Channel) {
+	c.Lock()
+	defer c.Unlock()
+
+	delete(c.userID2ConnectionID, userID)
+
+	delete(c.connectionID2Channels[connID], ch)
+	delete(c.channel2Connections[ch], connID)
+}
+
 // Remove removes all subscriptions of the input connection id. Removing
 // all subscription means removing connection from the storage.
 //
 // This function is thread-safe and multiple goroutines can remove
 // a connection from the in-memory storage.
-func (c *Cache) Remove(_ context.Context, connID string) {
+func (c *Cache) Remove(_ context.Context, connID string, userID *string) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -93,6 +122,10 @@ func (c *Cache) Remove(_ context.Context, connID string) {
 	}
 
 	delete(c.connectionID2Channels, connID)
+
+	if userID != nil {
+		delete(c.userID2ConnectionID, *userID)
+	}
 }
 
 // Connections returns a list of connections that already subscribed
@@ -110,4 +143,29 @@ func (c *Cache) Connections(_ context.Context, ch channel.Channel) []common.Conn
 	}
 
 	return connections
+}
+
+// ConnectionByUserID return the connection if there is a connection
+// for the input userID, and the that connection already subscribed
+// to the input channel. Otherwise, returns nil.
+func (c *Cache) ConnectionByUserID(_ context.Context, ch channel.Channel, userID string) common.ConnectionWrapper {
+	c.RLock()
+	defer c.RUnlock()
+
+	connID, exists := c.userID2ConnectionID[userID]
+	if !exists {
+		return nil
+	}
+
+	connID2Connections, exists := c.channel2Connections[ch]
+	if !exists {
+		return nil
+	}
+
+	conn, exists := connID2Connections[connID]
+	if !exists {
+		return nil
+	}
+
+	return conn
 }
