@@ -51,7 +51,8 @@ type Option func(*Config)
 
 // Config represents Channelize configuration.
 type Config struct {
-	logger log.Logger
+	logger   log.Logger
+	authFunc auth.AuthenticateFunc
 }
 
 func newDefaultConfig() *Config {
@@ -63,6 +64,12 @@ func newDefaultConfig() *Config {
 func WithLogger(logger log.Logger) func(config *Config) {
 	return func(config *Config) {
 		config.logger = logger
+	}
+}
+
+func WithAuthFunc(authFunc auth.AuthenticateFunc) func(config *Config) {
+	return func(config *Config) {
+		config.authFunc = authFunc
 	}
 }
 
@@ -80,7 +87,7 @@ type Channelize struct {
 // NewChannelize creates new instance of Channelize struct. It uses in-memory
 // storage by default to store the connections and mapping between the connections and
 // channels.
-func NewChannelize(authFunc auth.AuthenticateFunc, options ...Option) *Channelize {
+func NewChannelize(options ...Option) *Channelize {
 	config := newDefaultConfig()
 	for _, option := range options {
 		option(config)
@@ -92,7 +99,7 @@ func NewChannelize(authFunc auth.AuthenticateFunc, options ...Option) *Channeliz
 		helper:     newHelper(storage),
 		dispatcher: core.NewDispatch(storage, config.logger),
 		logger:     config.logger,
-		authFunc:   authFunc,
+		authFunc:   config.authFunc,
 	}
 }
 
@@ -142,6 +149,20 @@ func RegisterPublicChannel(channelStr string) channel.Channel {
 // calling the internal channel.RegisterPublicChannels function. It returns
 // a list of created channels.
 func RegisterPublicChannels(channels ...string) []channel.Channel {
+	return channel.RegisterPublicChannels(channels...)
+}
+
+// RegisterPrivateChannel creates and registers a new channel by calling the
+// internal channel.RegisterPrivateChannel function. It returns the created
+// channel.
+func RegisterPrivateChannel(channelStr string) channel.Channel {
+	return channel.RegisterPublicChannel(channelStr)
+}
+
+// RegisterPrivateChannels creates and registers a list of input channels by
+// calling the internal channel.RegisterPrivateChannels function. It returns
+// a list of created channels.
+func RegisterPrivateChannels(channels ...string) []channel.Channel {
 	return channel.RegisterPublicChannels(channels...)
 }
 
