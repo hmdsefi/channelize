@@ -1,7 +1,7 @@
 # channelize
 
-A wrapper around gorilla websocket that can channelize the websocket messages. It gives the client the option
-of receiving specific type of events. Channelize is useful when your websocket server is reading different types
+A wrapper around gorilla websocket that can channelize the websocket messages. It gives the client this option to
+receive events in different channels. Channelize is useful when your websocket server is reading different types
 of events from a message broker. e.g., you might have multiple kafka topics or NATs subjects.
 
 Channelize gives you this option to categorize the outbound messages. You can choose a name for each event type
