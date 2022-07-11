@@ -1,4 +1,6 @@
 # channelize
+[![Go Report Card](https://goreportcard.com/badge/github.com/hamed-yousefi/channelize)](https://goreportcard.com/report/github.com/hamed-yousefi/channelize)
+[![Go Reference](https://pkg.go.dev/badge/github.com/hamed-yousefi/channelize.svg)](https://pkg.go.dev/github.com/hamed-yousefi/channelize)
 
 A wrapper around gorilla websocket that can channelize the websocket messages. It gives the client this option to
 receive events in different channels. Channelize is useful when your websocket server is reading different types
