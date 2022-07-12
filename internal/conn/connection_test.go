@@ -340,6 +340,42 @@ func TestConnection_Authenticate(t *testing.T) {
 	})
 }
 
+func TestConnection_SendMessage(t *testing.T) {
+	testMessage := []byte("test")
+
+	t.Run("send message to a closed connection", func(t *testing.T) {
+		t.Parallel()
+		conn := &Connection{send: make(chan []byte, 1), connected: false}
+		err := conn.SendMessage(testMessage)
+		require.NotNil(t, err)
+		var chanErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &chanErr))
+		assert.Equal(t, errorx.CodeConnectionClosed, chanErr.Code)
+		assert.Equal(t, errorx.ErrorMsgConnectionClosed, chanErr.Error())
+	})
+
+	t.Run("inbound buffer is full", func(t *testing.T) {
+		t.Parallel()
+		conn := &Connection{send: make(chan []byte, 1), connected: true}
+		err := conn.SendMessage(testMessage)
+		require.Nil(t, err)
+		err = conn.SendMessage(testMessage)
+		require.NotNil(t, err)
+		var chanErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &chanErr))
+		assert.Equal(t, errorx.CodeOutboundBufferIsFull, chanErr.Code)
+		assert.Equal(t, errorx.ErrorMsgOutboundBufferIsFull, chanErr.Error())
+	})
+
+	t.Run("send message", func(t *testing.T) {
+		t.Parallel()
+		conn := &Connection{send: make(chan []byte, 1), connected: true}
+		err := conn.SendMessage(testMessage)
+		require.Nil(t, err)
+		assert.Equal(t, testMessage, <-conn.send)
+	})
+}
+
 // TODO test concurrent connections
 // TODO test context cancellation propagation for multiple connections
 // TODO test server side closing connection
