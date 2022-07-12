@@ -33,8 +33,11 @@ jobs:
           go get -v -t -d ./...
           go test -v ./...
 
+      - name: Generate coverage report
+        run: ./build/scripts/coverage.sh
+        shell: bash
+
       - name: Upload coverage to codecov
-        run: make codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
