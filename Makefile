@@ -17,7 +17,7 @@ all: test
 .PHONY: test
 test: sync
 	$(info $(M) running tests)
-	 go test ./...
+	 go test -race ./...
 
 .PHONY: coverage
 coverage: sync

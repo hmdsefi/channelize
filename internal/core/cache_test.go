@@ -85,6 +85,10 @@ func TestCache_Unsubscribe(t *testing.T) {
 		t.Run("parallel unsubscribe", func(t *testing.T) {
 			t.Parallel()
 			cache.Unsubscribe(ctx, conn.ID(), ch)
+
+			cache.RLock()
+			defer cache.RUnlock()
+
 			_, exists := cache.channel2Connections[ch][conn.ID()]
 			assert.False(t, exists)
 
@@ -114,6 +118,10 @@ func TestCache_UnsubscribeUserID(t *testing.T) {
 			t.Run("parallel unsubscribe by userID", func(t *testing.T) {
 				t.Parallel()
 				cache.UnsubscribeUserID(ctx, userID2Connection[userID].ID(), userID, ch)
+
+				cache.RLock()
+				defer cache.RUnlock()
+
 				_, exists := cache.channel2Connections[ch][userID2Connection[userID].ID()]
 				assert.False(t, exists)
 
@@ -142,6 +150,10 @@ func TestCache_Remove(t *testing.T) {
 		t.Run("parallel remove", func(t *testing.T) {
 			t.Parallel()
 			cache.Remove(ctx, connections[i].ID(), connections[i].UserID())
+
+			cache.RLock()
+			defer cache.RUnlock()
+
 			_, exists := cache.connectionID2Channels[connections[i].ID()]
 			assert.False(t, exists)
 

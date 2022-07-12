@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/gorilla/websocket"
@@ -57,12 +58,35 @@ func testAuthenticateFunc(token string) (*auth.Token, error) {
 	return &auth.Token{}, nil
 }
 
+type connStore struct {
+	mu          sync.RWMutex
+	connections []*Connection
+}
+
+func (c *connStore) add(conn *Connection) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.connections = append(c.connections, conn)
+}
+
+func (c *connStore) get(index int) *Connection {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.connections[index]
+}
+
+func (c *connStore) len() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.connections)
+}
+
 type Handler struct {
 	http.Handler
 	ctx              context.Context
 	cancel           context.CancelFunc
 	mockMsgProcessor *MockMessageProcessor
-	connections      []*Connection
+	connStore        *connStore
 }
 
 func (s *Handler) Close() error {
@@ -77,6 +101,7 @@ func newHandler(t *testing.T, mockMsgProcessor *MockMessageProcessor) *Handler {
 		ctx:              ctx,
 		cancel:           cancel,
 		mockMsgProcessor: mockMsgProcessor,
+		connStore:        new(connStore),
 	}
 
 	router := http.NewServeMux()
@@ -93,7 +118,7 @@ func (s *Handler) makeWebsocketHandler(t *testing.T) http.HandlerFunc {
 		if err != nil {
 			t.Fatal(err)
 		}
-		s.connections = append(s.connections, NewConnection(
+		s.connStore.add(NewConnection(
 			s.ctx, conn,
 			s.mockMsgProcessor,
 			testAuthenticateFunc,
@@ -113,7 +138,6 @@ func TestNewConnection(t *testing.T) {
 	defer server.Close()
 
 	wsURL := protocolWS + strings.TrimPrefix(server.URL, protocolHTTP) + wsPath
-	t.Log("ws URL:", wsURL)
 
 	ws, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
@@ -131,16 +155,15 @@ func TestNewConnection(t *testing.T) {
 		}
 
 		actualClientMsg := <-receiver
-		t.Log("message that receive by the server:", actualClientMsg)
 		assert.Equal(t, expectedClientMsg, actualClientMsg)
 	})
 
 	t.Run("Test write to client", func(t *testing.T) {
 		expectedServerMsg := "test write message"
 
-		require.Equal(t, 1, len(handler.connections))
+		require.Equal(t, 1, handler.connStore.len())
 
-		err = handler.connections[0].SendMessage([]byte(expectedServerMsg))
+		err = handler.connStore.get(0).SendMessage([]byte(expectedServerMsg))
 		require.Nil(t, err)
 
 		msgType, msg, err := ws.ReadMessage()
@@ -151,7 +174,6 @@ func TestNewConnection(t *testing.T) {
 		require.Equal(t, websocket.TextMessage, msgType)
 
 		actualServerMsg := string(msg)
-		t.Log("message that client read:", actualServerMsg)
 		assert.Equal(t, expectedServerMsg, actualServerMsg)
 	})
 
