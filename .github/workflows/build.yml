@@ -33,9 +33,7 @@ jobs:
           go test -v ./...
 
       - name: Generate coverage report
-        run: |
-        git update-index --chmod=+x ./.github/scripts/backend_decrypt.sh
-        ./build/scripts/coverage.sh
+        run: ./build/scripts/coverage.sh
         shell: bash
 
       - name: Upload coverage to codecov
