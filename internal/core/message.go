@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/hamed-yousefi/channelize/internal/channel"
-	"github.com/hamed-yousefi/channelize/internal/common/errorx"
-	"github.com/hamed-yousefi/channelize/internal/common/validation"
+	"github.com/hmdsefi/channelize/internal/channel"
+	"github.com/hmdsefi/channelize/internal/common/errorx"
+	"github.com/hmdsefi/channelize/internal/common/validation"
 )
 
 const (

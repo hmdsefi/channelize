@@ -1,4 +1,4 @@
-module github.com/hamed-yousefi/channelize
+module github.com/hmdsefi/channelize
 
 go 1.17
 

@@ -6,7 +6,7 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/hamed-yousefi/channelize/internal/channel"
+	"github.com/hmdsefi/channelize/internal/channel"
 )
 
 const (

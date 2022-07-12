@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/gorilla/websocket"
-	"github.com/hamed-yousefi/channelize"
+	"github.com/hmdsefi/channelize"
 )
 
 func main() {

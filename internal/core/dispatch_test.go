@@ -14,11 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hamed-yousefi/channelize/internal/channel"
-	"github.com/hamed-yousefi/channelize/internal/common"
-	"github.com/hamed-yousefi/channelize/internal/common/errorx"
-	"github.com/hamed-yousefi/channelize/internal/common/log"
-	"github.com/hamed-yousefi/channelize/internal/core/mock"
+	"github.com/hmdsefi/channelize/internal/channel"
+	"github.com/hmdsefi/channelize/internal/common"
+	"github.com/hmdsefi/channelize/internal/common/errorx"
+	"github.com/hmdsefi/channelize/internal/common/log"
+	"github.com/hmdsefi/channelize/internal/core/mock"
 )
 
 var (

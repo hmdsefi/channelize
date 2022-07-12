@@ -1,8 +1,8 @@
 # channelize
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/hamed-yousefi/channelize)](https://goreportcard.com/report/github.com/hamed-yousefi/channelize)
-[![codecov](https://codecov.io/gh/hamed-yousefi/channelize/branch/master/graph/badge.svg?token=6IUFW3MADN)](https://codecov.io/gh/hamed-yousefi/channelize)
-[![Go Reference](https://pkg.go.dev/badge/github.com/hamed-yousefi/channelize.svg)](https://pkg.go.dev/github.com/hamed-yousefi/channelize)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hmdsefi/channelize)](https://goreportcard.com/report/github.com/hmdsefi/channelize)
+[![codecov](https://codecov.io/gh/hmdsefi/channelize/branch/master/graph/badge.svg?token=6IUFW3MADN)](https://codecov.io/gh/hmdsefi/channelize)
+[![Go Reference](https://pkg.go.dev/badge/github.com/hmdsefi/channelize.svg)](https://pkg.go.dev/github.com/hmdsefi/channelize)
 
 A wrapper around gorilla websocket that can channelize the websocket messages. It gives the client this option to
 receive events in different channels. Channelize is useful when your websocket server is reading different types
@@ -20,20 +20,20 @@ to one or more channels to receive the streams.
 * [How to use](#How-to-use)
     * [Public channels](#Public-channels)
     * [Private channels](#Private-channels)
-* [Examples](https://github.com/hamed-yousefi/channelize/tree/master/_examples)
+* [Examples](https://github.com/hmdsefi/channelize/tree/master/_examples)
 
 ### Install
 
 To use Channelize, first you should use `go get` command to get the latest version of this library:
 
 ```shell
-go get -u github.com/hamed-yousefi/channelize
+go get -u github.com/hmdsefi/channelize
 ```
 
 Next step is importing channelize to your project:
 
 ```go
-import "github.com/hamed-yousefi/channelize"
+import "github.com/hmdsefi/channelize"
 ```
 
 ### How to use
@@ -177,4 +177,4 @@ To unsubscribe, client can use the following message:
 
 ## License
 
-MIT License, please see [LICENSE](https://github.com/hamed-yousefi/channelize/blob/master/LICENSE) for details.
+MIT License, please see [LICENSE](https://github.com/hmdsefi/channelize/blob/master/LICENSE) for details.

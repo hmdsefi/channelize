@@ -9,10 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/hamed-yousefi/channelize/internal/channel"
-	"github.com/hamed-yousefi/channelize/internal/common"
-	"github.com/hamed-yousefi/channelize/internal/common/errorx"
-	"github.com/hamed-yousefi/channelize/log"
+	"github.com/hmdsefi/channelize/internal/channel"
+	"github.com/hmdsefi/channelize/internal/common"
+	"github.com/hmdsefi/channelize/internal/common/errorx"
+	"github.com/hmdsefi/channelize/log"
 )
 
 // store stores connections per channel.
