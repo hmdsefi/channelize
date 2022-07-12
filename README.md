@@ -1,4 +1,5 @@
 # channelize
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/hamed-yousefi/channelize)](https://goreportcard.com/report/github.com/hamed-yousefi/channelize)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hamed-yousefi/channelize.svg)](https://pkg.go.dev/github.com/hamed-yousefi/channelize)
 
