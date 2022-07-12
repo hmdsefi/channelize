@@ -113,7 +113,6 @@ func TestNewConnection(t *testing.T) {
 	defer server.Close()
 
 	wsURL := protocolWS + strings.TrimPrefix(server.URL, protocolHTTP) + wsPath
-	t.Log("ws URL:", wsURL)
 
 	ws, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
@@ -131,7 +130,6 @@ func TestNewConnection(t *testing.T) {
 		}
 
 		actualClientMsg := <-receiver
-		t.Log("message that receive by the server:", actualClientMsg)
 		assert.Equal(t, expectedClientMsg, actualClientMsg)
 	})
 
@@ -151,7 +149,6 @@ func TestNewConnection(t *testing.T) {
 		require.Equal(t, websocket.TextMessage, msgType)
 
 		actualServerMsg := string(msg)
-		t.Log("message that client read:", actualServerMsg)
 		assert.Equal(t, expectedServerMsg, actualServerMsg)
 	})
 
