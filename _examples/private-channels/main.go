@@ -15,8 +15,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/hamed-yousefi/channelize"
-	"github.com/hamed-yousefi/channelize/auth"
+	"github.com/hmdsefi/channelize"
+	"github.com/hmdsefi/channelize/auth"
 )
 
 func main() {
