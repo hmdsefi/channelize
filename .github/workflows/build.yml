@@ -1,32 +1,40 @@
 name: build
 on: [push, pull_request]
 jobs:
-  test:
-    name: Go test ${{ matrix.go }}
+  golangci:
+    name: lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: ['1.15', '1.16', '1.17']
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.17
+      - uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
+          version: v1.46.2
 
-      - name: Lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.41.1
-          git clone --depth=1 https://github.com/${GITHUB_REPOSITORY}
-          cd $(basename ${GITHUB_REPOSITORY})
-          ../bin/golangci-lint run
-
+  build:
+    name: Go build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          go-version: 1.17
       - name: Build
         run: |
+          git clone --depth=1 https://github.com/${GITHUB_REPOSITORY}
           cd $(basename ${GITHUB_REPOSITORY})
           go build -v -race
 
-      - name: Setup go
-        uses: actions/setup-go@v1
+  test:
+    name: Go test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
         with:
-          go-version: ${{ matrix.go }}
-
+          go-version: 1.17
       - name: go get & test
         run: |
           go get -v -t -d ./...
