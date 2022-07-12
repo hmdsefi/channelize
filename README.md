@@ -1,6 +1,7 @@
 # channelize
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/hamed-yousefi/channelize)](https://goreportcard.com/report/github.com/hamed-yousefi/channelize)
+[![codecov](https://codecov.io/gh/hamed-yousefi/channelize/branch/master/graph/badge.svg?token=6IUFW3MADN)](https://codecov.io/gh/hamed-yousefi/channelize)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hamed-yousefi/channelize.svg)](https://pkg.go.dev/github.com/hamed-yousefi/channelize)
 
 A wrapper around gorilla websocket that can channelize the websocket messages. It gives the client this option to
