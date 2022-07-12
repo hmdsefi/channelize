@@ -1,4 +1,4 @@
-name: Go
+name: build
 on: [push, pull_request]
 jobs:
   test:
@@ -6,9 +6,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.13', '1.14', '1.15', '1.16', '1.17']
+        go: ['1.15', '1.16', '1.17']
     steps:
       - uses: actions/checkout@master
+      - name: Build
+        run: |
+          git clone --depth=1 https://github.com/${GITHUB_REPOSITORY}
+          cd $(basename ${GITHUB_REPOSITORY})
+          go build -v -race
       - name: Setup go
         uses: actions/setup-go@v1
         with:
