@@ -6,11 +6,15 @@ package conn
 
 import (
 	"context"
+	"errors"
+	"github.com/hamed-yousefi/channelize/internal/common/errorx"
+	"github.com/hamed-yousefi/channelize/internal/common/utils"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +28,8 @@ const (
 	protocolHTTP = "http"
 	protocolWS   = "ws"
 	wsPath       = "/ws"
+
+	testAuthToken = "test-auth-token"
 )
 
 var (
@@ -204,6 +210,133 @@ func TestConnection_UserID(t *testing.T) {
 		actualUserID := conn.UserID()
 		require.NotNil(t, actualUserID)
 		assert.Equal(t, expectedUserID, *actualUserID)
+	})
+}
+
+func TestConnection_AuthenticateAndStore(t *testing.T) {
+	t.Run("nil authFunc", func(t *testing.T) {
+		t.Parallel()
+		conn := Connection{}
+		err := conn.AuthenticateAndStore(testAuthToken)
+		require.NotNil(t, err)
+		var chanErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &chanErr))
+		assert.Equal(t, errorx.CodeAuthFuncIsMissing, chanErr.Code)
+		assert.Equal(t, errorx.ErrorMsgAuthFuncIsMissing, chanErr.Error())
+	})
+
+	t.Run("validation error", func(t *testing.T) {
+		t.Parallel()
+		errMsg := "invalid token"
+		authFunc := func(_ string) (*auth.Token, error) {
+			return nil, errors.New(errMsg)
+		}
+		conn := Connection{authFunc: authFunc}
+		err := conn.AuthenticateAndStore(testAuthToken)
+		require.NotNil(t, err)
+		assert.Equal(t, errMsg, err.Error())
+	})
+
+	t.Run("expired token", func(t *testing.T) {
+		t.Parallel()
+		authFunc := func(_ string) (*auth.Token, error) {
+			return &auth.Token{
+				ExpiresAt: utils.Now().Add(-1 * time.Minute).Unix(),
+			}, nil
+		}
+		conn := Connection{authFunc: authFunc}
+		err := conn.AuthenticateAndStore(testAuthToken)
+		require.NotNil(t, err)
+		var chanErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &chanErr))
+		assert.Equal(t, errorx.CodeAuthTokenIsExpired, chanErr.Code)
+		assert.Equal(t, errorx.ErrorMsgAuthTokenIsExpired, chanErr.Error())
+	})
+
+	t.Run("valid token", func(t *testing.T) {
+		t.Parallel()
+		token := auth.Token{
+			ExpiresAt: utils.Now().Add(time.Minute).Unix(),
+		}
+
+		authFunc := func(_ string) (*auth.Token, error) {
+			out := token
+			return &out, nil
+		}
+		conn := Connection{authFunc: authFunc}
+		err := conn.AuthenticateAndStore(testAuthToken)
+		require.Nil(t, err)
+		assert.Equal(t, token, *conn.token)
+	})
+}
+
+func TestConnection_Authenticate(t *testing.T) {
+	t.Run("nil authFunc", func(t *testing.T) {
+		t.Parallel()
+		conn := Connection{}
+		err := conn.Authenticate()
+		require.NotNil(t, err)
+		var chanErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &chanErr))
+		assert.Equal(t, errorx.CodeAuthTokenIsMissing, chanErr.Code)
+		assert.Equal(t, errorx.ErrorMsgConnectionAuthTokenIsMissing, chanErr.Error())
+	})
+
+	t.Run("expired token", func(t *testing.T) {
+		t.Parallel()
+		token := auth.Token{
+			ExpiresAt: utils.Now().Add(-1 * time.Minute).Unix(),
+		}
+
+		authFunc := func(_ string) (*auth.Token, error) {
+			out := token
+			return &out, nil
+		}
+
+		conn := Connection{authFunc: authFunc, token: &token}
+		err := conn.Authenticate()
+		require.NotNil(t, err)
+		var chanErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &chanErr))
+		assert.Equal(t, errorx.CodeAuthTokenIsExpired, chanErr.Code)
+		assert.Equal(t, errorx.ErrorMsgAuthTokenIsExpired, chanErr.Error())
+	})
+
+	t.Run("valid token", func(t *testing.T) {
+		t.Parallel()
+		token := auth.Token{
+			ExpiresAt: utils.Now().Add(time.Minute).Unix(),
+		}
+
+		authFunc := func(_ string) (*auth.Token, error) {
+			out := token
+			return &out, nil
+		}
+
+		conn := Connection{authFunc: authFunc, token: &token}
+		err := conn.Authenticate()
+		assert.Nil(t, err)
+	})
+
+	t.Run("extended token", func(t *testing.T) {
+		t.Parallel()
+		token := auth.Token{
+			ExpiresAt: utils.Now().Add(-1 * time.Minute).Unix(),
+		}
+
+		extendedToken := auth.Token{
+			ExpiresAt: utils.Now().Add(time.Minute).Unix(),
+		}
+
+		authFunc := func(_ string) (*auth.Token, error) {
+			out := extendedToken
+			return &out, nil
+		}
+
+		conn := Connection{authFunc: authFunc, token: &token}
+		err := conn.Authenticate()
+		assert.Nil(t, err)
+		assert.Equal(t, extendedToken, *conn.token)
 	})
 }
 
