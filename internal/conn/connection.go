@@ -67,7 +67,7 @@ type Connection struct {
 	// from the storage.
 	helper helper
 
-	authenticate auth.AuthenticateFunc
+	authFunc auth.AuthenticateFunc
 
 	ctx    context.Context
 	logger log.Logger
@@ -103,16 +103,16 @@ func NewConnection(
 	ctx, cancel := context.WithCancel(ctx)
 
 	connWrapper := &Connection{
-		id:           uuid.NewV4().String(),
-		conn:         conn,
-		connected:    true,
-		cancel:       cancel,
-		send:         make(chan []byte, config.outboundBufferSize),
-		config:       *config,
-		helper:       helper,
-		authenticate: authFunc,
-		ctx:          ctx,
-		logger:       logger,
+		id:        uuid.NewV4().String(),
+		conn:      conn,
+		connected: true,
+		cancel:    cancel,
+		send:      make(chan []byte, config.outboundBufferSize),
+		config:    *config,
+		helper:    helper,
+		authFunc:  authFunc,
+		ctx:       ctx,
+		logger:    logger,
 	}
 
 	go connWrapper.read(ctx)
@@ -140,12 +140,12 @@ func (c *Connection) UserID() *string {
 // that client already implemented. Stores the token details in the receiver if
 // it is valid. Otherwise, returns err.
 func (c *Connection) AuthenticateAndStore(token string) error {
-	if c.authenticate == nil {
+	if c.authFunc == nil {
 		return errorx.NewChannelizeError(errorx.CodeAuthFuncIsMissing)
 	}
 
 	var err error
-	c.token, err = c.authenticate(token)
+	c.token, err = c.authFunc(token)
 	if err != nil {
 		return err
 	}
@@ -160,8 +160,8 @@ func (c *Connection) AuthenticateAndStore(token string) error {
 // Authenticate validates the existing token and update the connection token
 // if the token has been updated.
 func (c *Connection) Authenticate() error {
-	if c.token != nil {
-		return c.AuthenticateAndStore(c.token.Token)
+	if c.token == nil {
+		return errorx.NewChannelizeError(errorx.CodeAuthTokenIsMissing)
 	}
 
 	// check if current timestamp is less than token expires_at timestamp then the
@@ -170,9 +170,9 @@ func (c *Connection) Authenticate() error {
 		return nil
 	}
 
-	// if current timestamp passed the token expires_at timestamp validate token
+	// if current timestamp passed the token expires_at timestamp, validate token
 	// again. It is possible that the token lifetime has been extended.
-	return errorx.NewChannelizeError(errorx.CodeAuthTokenIsMissing)
+	return c.AuthenticateAndStore(c.token.Token)
 }
 
 // SendMessage sends the input message to the outbound channel.

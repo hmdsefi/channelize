@@ -33,7 +33,7 @@ jobs:
           go test -v ./...
 
       - name: Generate coverage report
-        run: sh ./build/scripts/coverage.sh
+        run: sh ./.github/scripts/coverage.sh
         shell: bash
 
       - name: Upload coverage to codecov
