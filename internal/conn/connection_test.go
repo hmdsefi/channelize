@@ -7,8 +7,6 @@ package conn
 import (
 	"context"
 	"errors"
-	"github.com/hamed-yousefi/channelize/internal/common/errorx"
-	"github.com/hamed-yousefi/channelize/internal/common/utils"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -21,7 +19,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hamed-yousefi/channelize/auth"
+	"github.com/hamed-yousefi/channelize/internal/common/errorx"
 	"github.com/hamed-yousefi/channelize/internal/common/log"
+	"github.com/hamed-yousefi/channelize/internal/common/utils"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	protocolWS   = "ws"
 	wsPath       = "/ws"
 
-	testAuthToken = "test-auth-token"
+	testAuthToken = "test-auth-token" // nolint
 )
 
 var (
