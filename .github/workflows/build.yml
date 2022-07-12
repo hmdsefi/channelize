@@ -9,16 +9,37 @@ jobs:
         go: ['1.15', '1.16', '1.17']
     steps:
       - uses: actions/checkout@master
+
+      - name: Lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.41.1
+          git clone --depth=1 https://github.com/${GITHUB_REPOSITORY}
+          cd $(basename ${GITHUB_REPOSITORY})
+          ../bin/golangci-lint run
+
       - name: Build
         run: |
           git clone --depth=1 https://github.com/${GITHUB_REPOSITORY}
           cd $(basename ${GITHUB_REPOSITORY})
           go build -v -race
+
       - name: Setup go
         uses: actions/setup-go@v1
         with:
           go-version: ${{ matrix.go }}
+
       - name: go get & test
         run: |
           go get -v -t -d ./...
           go test -v ./...
+
+      - name: Upload coverage to codecov
+        run: make codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage1.xml
+          flags: unittests # optional
+          name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
