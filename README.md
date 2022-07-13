@@ -1,5 +1,6 @@
 # channelize
 
+![build](https://github.com/hmdsefi/channelize/actions/workflows/build.yml/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hmdsefi/channelize)](https://goreportcard.com/report/github.com/hmdsefi/channelize)
 [![codecov](https://codecov.io/gh/hmdsefi/channelize/branch/master/graph/badge.svg?token=6IUFW3MADN)](https://codecov.io/gh/hmdsefi/channelize)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hmdsefi/channelize.svg)](https://pkg.go.dev/github.com/hmdsefi/channelize)
