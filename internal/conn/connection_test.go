@@ -93,6 +93,7 @@ type Handler struct {
 	cancel           context.CancelFunc
 	mockMsgProcessor *MockMessageProcessor
 	connStore        *connStore
+	options          []Option
 }
 
 func (s *Handler) Close() error {
@@ -100,7 +101,7 @@ func (s *Handler) Close() error {
 	return nil
 }
 
-func newHandler(t *testing.T, mockMsgProcessor *MockMessageProcessor) *Handler {
+func newHandler(t *testing.T, mockMsgProcessor *MockMessageProcessor, options ...Option) *Handler {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	svr := &Handler{
@@ -108,6 +109,7 @@ func newHandler(t *testing.T, mockMsgProcessor *MockMessageProcessor) *Handler {
 		cancel:           cancel,
 		mockMsgProcessor: mockMsgProcessor,
 		connStore:        new(connStore),
+		options:          options,
 	}
 
 	router := http.NewServeMux()
@@ -129,6 +131,7 @@ func (s *Handler) makeWebsocketHandler(t *testing.T) http.HandlerFunc {
 			s.mockMsgProcessor,
 			testAuthenticateFunc,
 			log.NewDefaultLogger(),
+			s.options...,
 		))
 	}
 }
@@ -139,7 +142,7 @@ func TestNewConnection(t *testing.T) {
 	mockMsgProcessor := newMockHelper(receiver)
 	defer mockMsgProcessor.close()
 
-	handler := newHandler(t, mockMsgProcessor)
+	handler := newHandler(t, mockMsgProcessor, WithPingPeriod(time.Microsecond))
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
@@ -153,6 +156,11 @@ func TestNewConnection(t *testing.T) {
 		_ = resp.Body.Close()
 		_ = ws.Close()
 	}()
+
+	t.Run("Test pong", func(t *testing.T) {
+		err := ws.WriteMessage(websocket.PongMessage, []byte("pong"))
+		assert.Nil(t, err)
+	})
 
 	t.Run("Test read from client", func(t *testing.T) {
 		expectedClientMsg := "test read message"
@@ -375,9 +383,3 @@ func TestConnection_SendMessage(t *testing.T) {
 		assert.Equal(t, testMessage, <-conn.send)
 	})
 }
-
-// TODO test concurrent connections
-// TODO test context cancellation propagation for multiple connections
-// TODO test server side closing connection
-// TODO test client side closing connection
-// TODO test ping/pong failures
