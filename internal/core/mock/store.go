@@ -12,14 +12,20 @@ import (
 )
 
 type Store struct {
-	connections []common.ConnectionWrapper
-	send        chan string
+	userConnections map[string]common.ConnectionWrapper
+	connections     []common.ConnectionWrapper
+	send            chan string
 }
 
-func NewStore(connections []common.ConnectionWrapper) *Store {
+func NewStore(userConnections map[string]common.ConnectionWrapper) *Store {
+	var connections []common.ConnectionWrapper
+	for _, conn := range userConnections {
+		connections = append(connections, conn)
+	}
 	return &Store{
-		connections: connections,
-		send:        make(chan string, 1),
+		connections:     connections,
+		userConnections: userConnections,
+		send:            make(chan string, 1),
 	}
 }
 
@@ -31,12 +37,8 @@ func (s Store) Connections(_ context.Context, _ channel.Channel) []common.Connec
 	return s.connections
 }
 
-func (s Store) ConnectionByUserID(_ context.Context, _ channel.Channel, _ string) common.ConnectionWrapper {
-	if len(s.connections) > 0 {
-		return s.connections[0]
-	}
-
-	return nil
+func (s Store) ConnectionByUserID(_ context.Context, _ channel.Channel, userID string) common.ConnectionWrapper {
+	return s.userConnections[userID]
 }
 
 func (s Store) Receive() string {

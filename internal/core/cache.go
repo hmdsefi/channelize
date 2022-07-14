@@ -162,10 +162,5 @@ func (c *Cache) ConnectionByUserID(_ context.Context, ch channel.Channel, userID
 		return nil
 	}
 
-	conn, exists := connID2Connections[connID]
-	if !exists {
-		return nil
-	}
-
-	return conn
+	return connID2Connections[connID]
 }

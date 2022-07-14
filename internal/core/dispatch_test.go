@@ -7,6 +7,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
 
@@ -45,22 +46,60 @@ func TestDispatch_SendPublicMessage(t *testing.T) {
 
 	ctx := context.Background()
 
+	t.Run("send message to not existing channel", func(t *testing.T) {
+		dispatch := NewDispatch(mock.NewStore(map[string]common.ConnectionWrapper{}), log.NewDefaultLogger())
+		err := dispatch.SendPublicMessage(ctx, "myChannel", expectedData)
+		assert.Nil(t, err)
+	})
+
+	t.Run("connection SendMessage error", func(t *testing.T) {
+		expectedErr := errors.New("invalid message")
+		conn := mock.NewConnection(connID, nil, authNoopFunc)
+		logger := mock.NewLogger(t)
+		logger.Expected(
+			log.Error,
+			"failed to send public message to the inbound buffer",
+			common.LogFieldID, conn.ID(),
+			common.LogFieldError, expectedErr.Error(),
+		)
+		dispatch := NewDispatch(
+			mock.NewStore(map[string]common.ConnectionWrapper{
+				uuid.NewV4().String(): conn.WithError(expectedErr),
+			}), logger)
+		err := dispatch.SendPublicMessage(ctx, testChannel, expectedData)
+		assert.Nil(t, err)
+	})
+
 	conn := mock.NewConnection(connID, nil, authNoopFunc)
-	dispatch := NewDispatch(mock.NewStore([]common.ConnectionWrapper{conn}), log.NewDefaultLogger())
+	dispatch := NewDispatch(
+		mock.NewStore(map[string]common.ConnectionWrapper{uuid.NewV4().String(): conn}),
+		log.NewDefaultLogger(),
+	)
 
-	err := dispatch.SendPublicMessage(ctx, testChannel, expectedData)
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Run("invalid input message", func(t *testing.T) {
+		invalidMessage := complex64(1)
+		err := dispatch.SendPublicMessage(ctx, testChannel, invalidMessage)
+		require.NotNil(t, err)
+		var customErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &customErr))
+		assert.Equal(t, errorx.CodeFailedToMarshalMessage, customErr.Code)
+	})
 
-	msgOutBytes := <-conn.Message()
+	t.Run("send message to existing channel", func(t *testing.T) {
+		err := dispatch.SendPublicMessage(ctx, testChannel, expectedData)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	var msgOut testMessageOut
-	err = json.Unmarshal(msgOutBytes, &msgOut)
-	require.Nil(t, err)
+		msgOutBytes := <-conn.Message()
 
-	assert.Equal(t, testChannel, msgOut.Channel)
-	assert.Equal(t, expectedData, msgOut.Data)
+		var msgOut testMessageOut
+		err = json.Unmarshal(msgOutBytes, &msgOut)
+		require.Nil(t, err)
+
+		assert.Equal(t, testChannel, msgOut.Channel)
+		assert.Equal(t, expectedData, msgOut.Data)
+	})
 }
 
 // TestDispatch_SendPublicMessage_Concurrent creates a list of connection and
@@ -76,10 +115,12 @@ func TestDispatch_SendPublicMessage_Concurrent(t *testing.T) {
 	// create list of mock connections.
 	var mockConnections []*mock.Connection
 	var connections []common.ConnectionWrapper
+	connMap := make(map[string]common.ConnectionWrapper)
 	for _, id := range testConnectionIDs {
 		conn := mock.NewConnection(id, nil, authNoopFunc)
 		mockConnections = append(mockConnections, conn)
 		connections = append(connections, conn)
+		connMap[uuid.NewV4().String()] = conn
 	}
 
 	wg := sync.WaitGroup{}
@@ -102,7 +143,7 @@ func TestDispatch_SendPublicMessage_Concurrent(t *testing.T) {
 	}
 
 	// store the created connections into the storage and create dispatch with it.
-	dispatch := NewDispatch(mock.NewStore(connections), log.NewDefaultLogger())
+	dispatch := NewDispatch(mock.NewStore(connMap), log.NewDefaultLogger())
 
 	// send multiple public messages concurrently
 	parallelSendCount := 100
@@ -133,27 +174,65 @@ func TestDispatch_SendPrivateMessage(t *testing.T) {
 	const (
 		privateChannel = channel.Channel("testPrivateChannel")
 		connID         = "test-conn-id"
-		userID         = "test_user_id"
 	)
+
+	userID := "test_user_id"
 
 	ctx := context.Background()
 
-	conn := mock.NewConnection(connID, nil, authNoopFunc)
-	dispatch := NewDispatch(mock.NewStore([]common.ConnectionWrapper{conn}), log.NewDefaultLogger())
+	t.Run("connection SendMessage error", func(t *testing.T) {
+		expectedErr := errors.New("invalid message")
+		conn := mock.NewConnection(connID, &userID, authNoopFunc)
+		logger := mock.NewLogger(t)
+		logger.Expected(
+			log.Error,
+			"failed to send private message to the inbound buffer",
+			common.LogFieldID, conn.ID(),
+			common.LogFieldError, expectedErr.Error(),
+		)
+		dispatch := NewDispatch(
+			mock.NewStore(map[string]common.ConnectionWrapper{
+				userID: conn.WithError(expectedErr),
+			}), logger)
+		err := dispatch.SendPrivateMessage(ctx, privateChannel, userID, expectedData)
+		assert.Equal(t, expectedErr, err)
+	})
 
-	err := dispatch.SendPrivateMessage(ctx, privateChannel, userID, expectedData)
-	if err != nil {
-		t.Fatal(err)
-	}
+	conn := mock.NewConnection(connID, &userID, authNoopFunc)
+	dispatch := NewDispatch(
+		mock.NewStore(map[string]common.ConnectionWrapper{userID: conn}),
+		log.NewDefaultLogger(),
+	)
 
-	msgOutBytes := <-conn.Message()
+	t.Run("send message to not existing user", func(t *testing.T) {
+		err := dispatch.SendPrivateMessage(ctx, privateChannel, uuid.NewV4().String(), expectedData)
+		assert.Nil(t, err)
+	})
 
-	var msgOut testMessageOut
-	err = json.Unmarshal(msgOutBytes, &msgOut)
-	require.Nil(t, err)
+	t.Run("invalid input message", func(t *testing.T) {
+		invalidMessage := complex64(1)
+		err := dispatch.SendPrivateMessage(ctx, privateChannel, userID, invalidMessage)
+		require.NotNil(t, err)
+		var customErr *errorx.ChannelizeError
+		require.True(t, errors.As(err, &customErr))
+		assert.Equal(t, errorx.CodeFailedToMarshalMessage, customErr.Code)
+	})
 
-	assert.Equal(t, privateChannel, msgOut.Channel)
-	assert.Equal(t, expectedData, msgOut.Data)
+	t.Run("send message to existing channel", func(t *testing.T) {
+		err := dispatch.SendPrivateMessage(ctx, privateChannel, userID, expectedData)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		msgOutBytes := <-conn.Message()
+
+		var msgOut testMessageOut
+		err = json.Unmarshal(msgOutBytes, &msgOut)
+		require.Nil(t, err)
+
+		assert.Equal(t, privateChannel, msgOut.Channel)
+		assert.Equal(t, expectedData, msgOut.Data)
+	})
 }
 
 // TestDispatch_SendPrivateMessage_AuthError send a private message to the client's
@@ -162,13 +241,14 @@ func TestDispatch_SendPrivateMessage_AuthError(t *testing.T) {
 	const (
 		privateChannel = channel.Channel("testPrivateChannel")
 		connID         = "test-conn-id"
-		userID         = "test_user_id"
 	)
+
+	userID := "test_user_id"
 
 	ctx := context.Background()
 
-	conn := mock.NewConnection(connID, nil, makeAuthFunc(errorx.CodeAuthTokenIsExpired))
-	mockStore := mock.NewStore([]common.ConnectionWrapper{conn})
+	conn := mock.NewConnection(connID, &userID, makeAuthFunc(errorx.CodeAuthTokenIsExpired))
+	mockStore := mock.NewStore(map[string]common.ConnectionWrapper{userID: conn})
 	dispatch := NewDispatch(mockStore, log.NewDefaultLogger())
 
 	err := dispatch.SendPrivateMessage(ctx, privateChannel, userID, expectedData)
@@ -196,11 +276,13 @@ func TestDispatch_SendPrivateMessage_Concurrent(t *testing.T) {
 	var mockConnections []*mock.Connection
 	var connections []common.ConnectionWrapper
 	userIDs := make([]string, len(testConnectionIDs))
+	userConnections := make(map[string]common.ConnectionWrapper)
 	for i, id := range testConnectionIDs {
 		userIDs[i] = uuid.NewV4().String()
 		conn := mock.NewConnection(id, &userIDs[i], authNoopFunc)
 		mockConnections = append(mockConnections, conn)
 		connections = append(connections, conn)
+		userConnections[userIDs[i]] = conn
 	}
 
 	wg := sync.WaitGroup{}
@@ -223,7 +305,7 @@ func TestDispatch_SendPrivateMessage_Concurrent(t *testing.T) {
 	}
 
 	// store the created connections into the storage and create dispatch with it.
-	dispatch := NewDispatch(mock.NewStore(connections), log.NewDefaultLogger())
+	dispatch := NewDispatch(mock.NewStore(userConnections), log.NewDefaultLogger())
 
 	// send multiple private messages concurrently
 	parallelSendCount := 100
