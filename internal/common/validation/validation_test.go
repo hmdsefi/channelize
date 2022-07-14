@@ -42,3 +42,7 @@ func TestResult_IsValid(t *testing.T) {
 	out.AddFieldError(testField, testError)
 	assert.False(t, out.IsValid())
 }
+
+func TestSubField(t *testing.T) {
+	assert.Equal(t, "parentField:childField", SubField("parentField", "childField"))
+}

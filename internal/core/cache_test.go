@@ -245,4 +245,18 @@ func TestCache_ConnectionByUserID(t *testing.T) {
 			})
 		}
 	}
+
+	t.Run("userID doesn't exist", func(t *testing.T) {
+		t.Parallel()
+		actualConn := cache.ConnectionByUserID(ctx, testChannels[0], uuid.NewV4().String())
+		assert.Nil(t, actualConn)
+	})
+
+	t.Run("userID didn't subscribe channel", func(t *testing.T) {
+		t.Parallel()
+		conns := cache.Connections(ctx, testChannels[0])
+		require.NotNil(t, conns[0].UserID())
+		actualConn := cache.ConnectionByUserID(ctx, "myChannel", *conns[0].UserID())
+		assert.Nil(t, actualConn)
+	})
 }

@@ -17,7 +17,7 @@ import (
 
 // store stores connections per channel.
 type store interface {
-	// UnsubscribeByUserID removes the input channel subscription from the storage. Also,
+	// UnsubscribeUserID removes the input channel subscription from the storage. Also,
 	// removes userID and connID mapping to prevent token validation for each input message.
 	UnsubscribeUserID(_ context.Context, connID string, userID string, channels channel.Channel)
 
