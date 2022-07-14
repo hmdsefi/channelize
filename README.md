@@ -5,8 +5,8 @@
 [![codecov](https://codecov.io/gh/hmdsefi/channelize/branch/master/graph/badge.svg?token=6IUFW3MADN)](https://codecov.io/gh/hmdsefi/channelize)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hmdsefi/channelize.svg)](https://pkg.go.dev/github.com/hmdsefi/channelize)
 
-A wrapper around gorilla websocket that can channelize the websocket messages. It gives the client this option to
-receive events in different channels. Channelize is useful when your websocket server is reading different types
+Channelize is a websocket framework based on gorilla websocket that manages inbound and outbound streams. It gives the client the option of
+receiving events in different channels. Channelize is useful when your websocket server is reading different types
 of events from a message broker. e.g., you might have multiple kafka topics or NATs subjects.
 
 Channelize gives you this option to categorize the outbound messages. You can choose a name for each event type
