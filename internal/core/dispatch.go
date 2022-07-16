@@ -101,7 +101,6 @@ func (d *Dispatch) SendPrivateMessage(ctx context.Context, ch channel.Channel, u
 		// TODO write error to the connection
 		return err
 	default:
-		// TODO write error to the connection
 		return err
 	}
 
