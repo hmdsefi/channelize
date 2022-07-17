@@ -9,11 +9,15 @@ type Metrics struct {
 }
 
 func NewMetrics() *Metrics {
+	openConnections := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "open_connections",
+		Help: "Number of open connections",
+	})
+
+	prometheus.MustRegister(openConnections)
+
 	return &Metrics{
-		openConnections: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "open_connections",
-			Help: "Number of open connections",
-		}),
+		openConnections: openConnections,
 	}
 }
 
