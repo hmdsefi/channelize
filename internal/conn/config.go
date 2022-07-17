@@ -37,6 +37,8 @@ type Config struct {
 
 	// pingMessageFunc is a function that create ping messages.
 	pingMessageFunc PingMessageFunc
+
+	collector collector
 }
 
 func newDefaultConfig() *Config {
@@ -45,6 +47,7 @@ func newDefaultConfig() *Config {
 		pongWait:           defaultPongWait,
 		pingPeriod:         defaultPingPeriod,
 		pingMessageFunc:    defaultPingMessageFunc,
+		collector:          newNoopCollector(),
 	}
 }
 
@@ -90,6 +93,29 @@ func WithPingMessageFunc(messageFunc PingMessageFunc) Option {
 	}
 }
 
+func WithCollector(in collector) Option {
+	return func(config *Config) {
+		if config == nil {
+			return
+		}
+
+		config.collector = in
+	}
+}
+
 func defaultPingMessageFunc() []byte {
 	return []byte(fmt.Sprint(utils.Now().Unix()))
+}
+
+type noopCollector struct {
+}
+
+func newNoopCollector() *noopCollector {
+	return &noopCollector{}
+}
+
+func (n *noopCollector) OpenConnection() {
+}
+
+func (n *noopCollector) CloseConnection() {
 }

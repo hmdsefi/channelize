@@ -27,6 +27,11 @@ type helper interface {
 	Remove(ctx context.Context, connID string, userID *string)
 }
 
+type collector interface {
+	OpenConnection()
+	CloseConnection()
+}
+
 // Connection wraps the websocket connection and add more functionalities to it.
 // Each client that connected to the websocket server has a Connection.
 type Connection struct {
@@ -114,6 +119,8 @@ func NewConnection(
 		ctx:       ctx,
 		logger:    logger,
 	}
+
+	connWrapper.config.collector.OpenConnection()
 
 	go connWrapper.read(ctx)
 	go connWrapper.write(ctx)
@@ -221,6 +228,8 @@ func (c *Connection) Close() error {
 		c.mu.Lock()
 		c.connected = false
 		c.mu.Unlock()
+
+		c.config.collector.OpenConnection()
 
 		// NOTE: do not close the outbound channel here. It can cause panic.
 
