@@ -14,7 +14,7 @@ import (
 func TestMetrics(t *testing.T) {
 	collector := NewMetrics()
 
-	assert.True(t, strings.Index(collector.openConnections.Desc().String(), "\"open_connections\"") != -1)
+	assert.True(t, strings.Contains(collector.openConnections.Desc().String(), "\"open_connections\""))
 }
 
 func TestMetrics_OpenConnection(t *testing.T) {
