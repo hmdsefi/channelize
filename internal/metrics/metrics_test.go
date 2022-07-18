@@ -3,12 +3,19 @@ package metrics
 import (
 	"encoding/hex"
 	"math/rand"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMetrics(t *testing.T) {
+	collector := NewMetrics()
+
+	assert.True(t, strings.Index(collector.openConnections.Desc().String(), "\"open_connections\"") != -1)
+}
 
 func TestMetrics_OpenConnection(t *testing.T) {
 	t.Run("test open connection", func(t *testing.T) {
