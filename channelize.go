@@ -48,8 +48,12 @@ type dispatcher interface {
 	SendPrivateMessage(ctx context.Context, ch channel.Channel, userID string, message interface{}) error
 }
 
+// collector is an interface for collecting the connection metrics.
 type collector interface {
+	// OpenConnection increases the total number of open connections.
 	OpenConnection()
+
+	// CloseConnection decreases the total number of open connections.
 	CloseConnection()
 }
 

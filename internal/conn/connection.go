@@ -27,8 +27,12 @@ type helper interface {
 	Remove(ctx context.Context, connID string, userID *string)
 }
 
+// collector is an interface for collecting the connection metrics.
 type collector interface {
+	// OpenConnection increases the total number of open connections.
 	OpenConnection()
+
+	// CloseConnection decreases the total number of open connections.
 	CloseConnection()
 }
 
@@ -229,7 +233,7 @@ func (c *Connection) Close() error {
 		c.connected = false
 		c.mu.Unlock()
 
-		c.config.collector.OpenConnection()
+		c.config.collector.CloseConnection()
 
 		// NOTE: do not close the outbound channel here. It can cause panic.
 
