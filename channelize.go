@@ -18,6 +18,7 @@ import (
 	internalLog "github.com/hmdsefi/channelize/internal/common/log"
 	"github.com/hmdsefi/channelize/internal/conn"
 	"github.com/hmdsefi/channelize/internal/core"
+	"github.com/hmdsefi/channelize/internal/metrics"
 	"github.com/hmdsefi/channelize/log"
 )
 
@@ -45,6 +46,15 @@ type dispatcher interface {
 	// SendPrivateMessage sends the input message to the input channel if the client
 	// already authenticated with the input userID. Otherwise, skips and returns.
 	SendPrivateMessage(ctx context.Context, ch channel.Channel, userID string, message interface{}) error
+}
+
+// collector is an interface for collecting the connection metrics.
+type collector interface {
+	// OpenConnection increases the total number of open connections.
+	OpenConnection()
+
+	// CloseConnection decreases the total number of open connections.
+	CloseConnection()
 }
 
 type Option func(*Config)
@@ -82,6 +92,7 @@ type Channelize struct {
 	dispatcher dispatcher
 	logger     log.Logger
 	authFunc   auth.AuthenticateFunc
+	collector  collector
 }
 
 // NewChannelize creates new instance of Channelize struct. It uses in-memory
@@ -100,12 +111,13 @@ func NewChannelize(options ...Option) *Channelize {
 		dispatcher: core.NewDispatch(storage, config.logger),
 		logger:     config.logger,
 		authFunc:   config.authFunc,
+		collector:  metrics.NewMetrics(),
 	}
 }
 
 // CreateConnection creates a `conn.Connection` object with the input options.
 func (c *Channelize) CreateConnection(ctx context.Context, wsConn *websocket.Conn, options ...conn.Option) *conn.Connection {
-	return conn.NewConnection(ctx, wsConn, c.helper, c.authFunc, c.logger, options...)
+	return conn.NewConnection(ctx, wsConn, c.helper, c.authFunc, c.logger, append(options, conn.WithCollector(c.collector))...)
 }
 
 // MakeHTTPHandler makes a built-in HTTP handler function. The client should

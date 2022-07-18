@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,4 +53,35 @@ func TestWithPingMessageFunc(t *testing.T) {
 	option(cfg)
 
 	assert.Equal(t, string(expectedPingMessage), string(cfg.pingMessageFunc()))
+}
+
+func TestWithCollector(t *testing.T) {
+	c := newMockCollector()
+	option := WithCollector(c)
+	option(nil)
+
+	cfg := newDefaultConfig()
+	option(cfg)
+
+	assert.NotNil(t, cfg.collector)
+	cfg.collector.OpenConnection()
+	assert.Equal(t, int32(1), c.openConnections)
+	cfg.collector.CloseConnection()
+	assert.Equal(t, int32(0), c.openConnections)
+}
+
+type mockCollector struct {
+	openConnections int32
+}
+
+func newMockCollector() *mockCollector {
+	return &mockCollector{}
+}
+
+func (n *mockCollector) OpenConnection() {
+	atomic.AddInt32(&n.openConnections, 1)
+}
+
+func (n *mockCollector) CloseConnection() {
+	atomic.AddInt32(&n.openConnections, -1)
 }
