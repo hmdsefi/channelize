@@ -29,11 +29,11 @@ type helper interface {
 
 // collector is an interface for collecting the connection metrics.
 type collector interface {
-	// OpenConnection increases the total number of open connections.
-	OpenConnection()
+	// OpenConnectionsInc increases the total number of open connections.
+	OpenConnectionsInc()
 
-	// CloseConnection decreases the total number of open connections.
-	CloseConnection()
+	// OpenConnectionsDec decreases the total number of open connections.
+	OpenConnectionsDec()
 }
 
 // Connection wraps the websocket connection and add more functionalities to it.
@@ -124,7 +124,7 @@ func NewConnection(
 		logger:    logger,
 	}
 
-	connWrapper.config.collector.OpenConnection()
+	connWrapper.config.collector.OpenConnectionsInc()
 
 	go connWrapper.read(ctx)
 	go connWrapper.write(ctx)
@@ -233,7 +233,7 @@ func (c *Connection) Close() error {
 		c.connected = false
 		c.mu.Unlock()
 
-		c.config.collector.CloseConnection()
+		c.config.collector.OpenConnectionsDec()
 
 		// NOTE: do not close the outbound channel here. It can cause panic.
 

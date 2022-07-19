@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
 	"os"
@@ -44,6 +45,7 @@ func initiateAndServe(ctx context.Context, chlz *channelize.Channelize) {
 	}
 
 	http.HandleFunc("/ws", chlz.MakeHTTPHandler(ctx, upgrader))
+	http.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)

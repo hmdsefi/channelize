@@ -12,6 +12,11 @@ import (
 	"github.com/hmdsefi/channelize/internal/common"
 )
 
+type collector interface {
+	PrivateConnectionsInc()
+	PrivateConnectionsDec()
+}
+
 // Cache is an in-memory storage to store available channels and connections.
 type Cache struct {
 	// connectionID2Channels stores a mapping between the connection ID and channels.
@@ -32,12 +37,15 @@ type Cache struct {
 	// map[userID]connectionID
 	userID2ConnectionID map[string]string
 
+	collector collector
+
 	sync.RWMutex
 }
 
 // NewCache creates a new instance on Cache.
-func NewCache() *Cache {
+func NewCache(col collector) *Cache {
 	return &Cache{
+		collector:             col,
 		connectionID2Channels: make(map[string]map[channel.Channel]struct{}),
 		channel2Connections:   make(map[channel.Channel]map[string]common.ConnectionWrapper),
 		userID2ConnectionID:   make(map[string]string),
@@ -63,6 +71,7 @@ func (c *Cache) Subscribe(_ context.Context, conn common.ConnectionWrapper, chan
 	userID := conn.UserID()
 	if userID != nil {
 		c.userID2ConnectionID[*userID] = conn.ID()
+		c.collector.PrivateConnectionsInc()
 	}
 
 	// iterate over the input channel and store the subscription.
@@ -102,7 +111,10 @@ func (c *Cache) UnsubscribeUserID(_ context.Context, connID string, userID strin
 	c.Lock()
 	defer c.Unlock()
 
-	delete(c.userID2ConnectionID, userID)
+	if _, exists := c.userID2ConnectionID[userID]; exists {
+		delete(c.userID2ConnectionID, userID)
+		c.collector.PrivateConnectionsDec()
+	}
 
 	delete(c.connectionID2Channels[connID], ch)
 	delete(c.channel2Connections[ch], connID)
@@ -124,7 +136,11 @@ func (c *Cache) Remove(_ context.Context, connID string, userID *string) {
 	delete(c.connectionID2Channels, connID)
 
 	if userID != nil {
-		delete(c.userID2ConnectionID, *userID)
+		_, exists := c.userID2ConnectionID[*userID]
+		if exists {
+			delete(c.userID2ConnectionID, *userID)
+			c.collector.PrivateConnectionsDec()
+		}
 	}
 }
 

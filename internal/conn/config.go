@@ -114,8 +114,8 @@ func newNoopCollector() *noopCollector {
 	return &noopCollector{}
 }
 
-func (n *noopCollector) OpenConnection() {
+func (n *noopCollector) OpenConnectionsInc() {
 }
 
-func (n *noopCollector) CloseConnection() {
+func (n *noopCollector) OpenConnectionsDec() {
 }

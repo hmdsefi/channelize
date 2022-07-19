@@ -64,9 +64,9 @@ func TestWithCollector(t *testing.T) {
 	option(cfg)
 
 	assert.NotNil(t, cfg.collector)
-	cfg.collector.OpenConnection()
+	cfg.collector.OpenConnectionsInc()
 	assert.Equal(t, int32(1), c.openConnections)
-	cfg.collector.CloseConnection()
+	cfg.collector.OpenConnectionsDec()
 	assert.Equal(t, int32(0), c.openConnections)
 }
 
@@ -78,10 +78,10 @@ func newMockCollector() *mockCollector {
 	return &mockCollector{}
 }
 
-func (n *mockCollector) OpenConnection() {
+func (n *mockCollector) OpenConnectionsInc() {
 	atomic.AddInt32(&n.openConnections, 1)
 }
 
-func (n *mockCollector) CloseConnection() {
+func (n *mockCollector) OpenConnectionsDec() {
 	atomic.AddInt32(&n.openConnections, -1)
 }
