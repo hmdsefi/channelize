@@ -1,3 +1,7 @@
+/**
+ * Copyright © 2022 Hamed Yousefi <hdyousefi@gmail.com>.
+ */
+
 package metrics
 
 import (
@@ -9,6 +13,9 @@ import (
 type Metrics struct {
 	// openConnections represents total number of open connections.
 	openConnections prometheus.Gauge
+
+	// privateConnections represents total number of private connections.
+	privateConnections prometheus.Gauge
 }
 
 func NewMetrics() *Metrics {
@@ -18,22 +25,38 @@ func NewMetrics() *Metrics {
 func newMetricsWithPostfix(postfix string) *Metrics {
 	openConnections := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "open_connections" + postfix,
-		Help: "Number of open connections",
+		Help: "Total number of open connections",
+	})
+
+	privateConnections := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "private_connections" + postfix,
+		Help: "Total number of private connections",
 	})
 
 	prometheus.MustRegister(openConnections)
 
 	return &Metrics{
-		openConnections: openConnections,
+		openConnections:    openConnections,
+		privateConnections: privateConnections,
 	}
 }
 
-// OpenConnection increases the total number of open connections.
-func (m *Metrics) OpenConnection() {
+// OpenConnectionsInc increases the total number of open connections.
+func (m *Metrics) OpenConnectionsInc() {
 	m.openConnections.Inc()
 }
 
-// CloseConnection decreases the total number of open connections.
-func (m *Metrics) CloseConnection() {
+// OpenConnectionsDec decreases the total number of open connections.
+func (m *Metrics) OpenConnectionsDec() {
 	m.openConnections.Dec()
+}
+
+// PrivateConnectionsInc increases the total number of private connections.
+func (m *Metrics) PrivateConnectionsInc() {
+	m.privateConnections.Inc()
+}
+
+// PrivateConnectionsDec decreases the total number of private connections.
+func (m *Metrics) PrivateConnectionsDec() {
+	m.privateConnections.Dec()
 }

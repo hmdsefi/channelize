@@ -6,6 +6,7 @@ package core
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	uuid "github.com/satori/go.uuid"
@@ -47,7 +48,8 @@ func TestCache_Subscribe(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("subscribe public channels", func(t *testing.T) {
-		cache := NewCache()
+		mockCollector := mock.NewCollector()
+		cache := NewCache(mockCollector)
 		expectedConn := mock.NewConnection(testConnID, nil, authNoopFunc)
 		cache.Subscribe(ctx, expectedConn, testChannels[:2]...)
 
@@ -57,10 +59,12 @@ func TestCache_Subscribe(t *testing.T) {
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[0]][expectedConn.ID()])
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[1]][expectedConn.ID()])
 		assert.True(t, len(cache.userID2ConnectionID) == 0)
+		assert.Equal(t, int32(0), mockCollector.PrivateConnections())
 	})
 
 	t.Run("subscribe private channels", func(t *testing.T) {
-		cache := NewCache()
+		mockCollector := mock.NewCollector()
+		cache := NewCache(mockCollector)
 		userID := uuid.NewV4().String()
 		expectedConn := mock.NewConnection(testConnID, &userID, authNoopFunc)
 		cache.Subscribe(ctx, expectedConn, testChannels[2:]...)
@@ -71,6 +75,7 @@ func TestCache_Subscribe(t *testing.T) {
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[2]][expectedConn.ID()])
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[3]][expectedConn.ID()])
 		assert.Equal(t, expectedConn.ID(), cache.userID2ConnectionID[userID])
+		assert.Equal(t, int32(1), mockCollector.PrivateConnections())
 	})
 }
 
@@ -79,7 +84,8 @@ func TestCache_Subscribe(t *testing.T) {
 func TestCache_Unsubscribe(t *testing.T) {
 	ctx := context.Background()
 	conn := mock.NewConnection(testConnID, nil, authNoopFunc)
-	cache := initCache(conn)
+	mockCollector := mock.NewCollector()
+	cache := initCache(mockCollector, conn)
 
 	for _, ch := range testChannels {
 		t.Run("parallel unsubscribe", func(t *testing.T) {
@@ -110,14 +116,20 @@ func TestCache_UnsubscribeUserID(t *testing.T) {
 		userID2Connection[userID] = conn
 	}
 
-	cache := initCache(connections...)
+	mockCollector := mock.NewCollector()
+	cache := initCache(mockCollector, connections...)
+	assert.Equal(t, int32(len(connections)), mockCollector.PrivateConnections())
 
-	for _, ch := range testChannels {
-		for userID := range userID2Connection {
-			userID := userID
-			t.Run("parallel unsubscribe by userID", func(t *testing.T) {
-				t.Parallel()
-				cache.UnsubscribeUserID(ctx, userID2Connection[userID].ID(), userID, ch)
+	wg := new(sync.WaitGroup)
+	wg.Add(len(testChannels) * len(userID2Connection))
+	for _, testChannel := range testChannels {
+		ch := testChannel
+		for key, conn := range userID2Connection {
+			userID := key
+			connID := conn.ID()
+			go func() {
+				defer wg.Done()
+				cache.UnsubscribeUserID(ctx, connID, userID, ch)
 
 				cache.RLock()
 				defer cache.RUnlock()
@@ -130,9 +142,12 @@ func TestCache_UnsubscribeUserID(t *testing.T) {
 
 				_, exists = cache.userID2ConnectionID[userID]
 				assert.False(t, exists)
-			})
+			}()
 		}
 	}
+
+	wg.Wait()
+	assert.Equal(t, int32(0), mockCollector.PrivateConnections())
 }
 
 // TestCache_Remove removes multiple connections from the storage concurrently.
@@ -144,11 +159,16 @@ func TestCache_Remove(t *testing.T) {
 		connections = append(connections, mock.NewConnection(id, &userID, authNoopFunc))
 	}
 
-	cache := initCache(connections...)
+	mockCollector := mock.NewCollector()
+	cache := initCache(mockCollector, connections...)
+	assert.Equal(t, int32(len(connections)), mockCollector.PrivateConnections())
 
-	for i := range connections {
-		t.Run("parallel remove", func(t *testing.T) {
-			t.Parallel()
+	wg := new(sync.WaitGroup)
+	wg.Add(len(connections))
+	for index := range connections {
+		i := index
+		go func() {
+			defer wg.Done()
 			cache.Remove(ctx, connections[i].ID(), connections[i].UserID())
 
 			cache.RLock()
@@ -161,8 +181,11 @@ func TestCache_Remove(t *testing.T) {
 				_, exists := cache.channel2Connections[ch][connections[i].ID()]
 				assert.False(t, exists)
 			}
-		})
+		}()
 	}
+
+	wg.Wait()
+	assert.Equal(t, int32(0), mockCollector.PrivateConnections())
 }
 
 // TestCache_Connections returns multiple list of available connections
@@ -176,7 +199,8 @@ func TestCache_Connections(t *testing.T) {
 		testConnections = append(testConnections, expectedConnections[id])
 	}
 
-	cache := initCache(testConnections...)
+	mockCollector := mock.NewCollector()
+	cache := initCache(mockCollector, testConnections...)
 
 	for _, ch := range testChannels {
 		t.Run("parallel get connections", func(t *testing.T) {
@@ -194,14 +218,15 @@ func TestCache_Connections(t *testing.T) {
 	}
 }
 
-func initCache(connections ...common.ConnectionWrapper) *Cache {
-	cache := NewCache()
+func initCache(coll collector, connections ...common.ConnectionWrapper) *Cache {
+	cache := NewCache(coll)
 	for i := range connections {
 		cache.connectionID2Channels[connections[i].ID()] = make(map[channel.Channel]struct{})
 
 		userID := connections[i].UserID()
 		if userID != nil {
 			cache.userID2ConnectionID[*userID] = connections[i].ID()
+			coll.PrivateConnectionsInc()
 		}
 
 		for _, ch := range testChannels {
@@ -230,7 +255,8 @@ func TestCache_ConnectionByUserID(t *testing.T) {
 		userID2Connection[userID] = connection
 	}
 
-	cache := initCache(connections...)
+	mockCollector := mock.NewCollector()
+	cache := initCache(mockCollector, connections...)
 
 	for _, ch := range testChannels {
 		for userID := range userID2Connection {

@@ -51,10 +51,16 @@ type dispatcher interface {
 // collector is an interface for collecting the connection metrics.
 type collector interface {
 	// OpenConnection increases the total number of open connections.
-	OpenConnection()
+	OpenConnectionsInc()
 
 	// CloseConnection decreases the total number of open connections.
-	CloseConnection()
+	OpenConnectionsDec()
+
+	// PrivateConnectionsInc increases total number of private connections.
+	PrivateConnectionsInc()
+
+	// PrivateConnectionsDec decreases total number of private connections.
+	PrivateConnectionsDec()
 }
 
 type Option func(*Config)
@@ -104,14 +110,15 @@ func NewChannelize(options ...Option) *Channelize {
 		option(config)
 	}
 
-	storage := core.NewCache()
+	collector := metrics.NewMetrics()
+	storage := core.NewCache(collector)
 
 	return &Channelize{
 		helper:     newHelper(storage),
 		dispatcher: core.NewDispatch(storage, config.logger),
 		logger:     config.logger,
 		authFunc:   config.authFunc,
-		collector:  metrics.NewMetrics(),
+		collector:  collector,
 	}
 }
 
