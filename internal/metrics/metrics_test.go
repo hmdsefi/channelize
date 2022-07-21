@@ -126,6 +126,30 @@ func TestMetrics_PrivateConnectionsDec(t *testing.T) {
 	})
 }
 
+func TestMetrics_PrivateConnectionsSet(t *testing.T) {
+	t.Run("test private connection set", func(t *testing.T) {
+		collector := newMetricsWithPostfix(randString())
+		collector.PrivateConnections(2)
+		assert.Equal(t, float64(2), testutil.ToFloat64(collector.privateConnectionsSet))
+	})
+}
+
+func TestMetrics_OpenConnectionsSet(t *testing.T) {
+	t.Run("test private connection set", func(t *testing.T) {
+		collector := newMetricsWithPostfix(randString())
+		collector.OpenConnections(2)
+		assert.Equal(t, float64(2), testutil.ToFloat64(collector.openConnectionsSet))
+	})
+}
+
+func TestMetrics_SubscribedChannels(t *testing.T) {
+	t.Run("test private connection set", func(t *testing.T) {
+		collector := newMetricsWithPostfix(randString())
+		collector.SubscribedChannels(2)
+		assert.Equal(t, float64(2), testutil.ToFloat64(collector.subscribedChannelsSet))
+	})
+}
+
 func randString() string {
 	randBytes := make([]byte, 10)
 	rand.Read(randBytes) // nolint

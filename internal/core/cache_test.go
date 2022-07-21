@@ -59,7 +59,7 @@ func TestCache_Subscribe(t *testing.T) {
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[0]][expectedConn.ID()])
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[1]][expectedConn.ID()])
 		assert.True(t, len(cache.userID2ConnectionID) == 0)
-		assert.Equal(t, int32(0), mockCollector.PrivateConnections())
+		assert.Equal(t, int32(0), mockCollector.PrivateConnectionsGauge)
 	})
 
 	t.Run("subscribe private channels", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestCache_Subscribe(t *testing.T) {
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[2]][expectedConn.ID()])
 		assert.Equal(t, expectedConn, cache.channel2Connections[testChannels[3]][expectedConn.ID()])
 		assert.Equal(t, expectedConn.ID(), cache.userID2ConnectionID[userID])
-		assert.Equal(t, int32(1), mockCollector.PrivateConnections())
+		assert.Equal(t, int32(1), mockCollector.PrivateConnectionsGauge)
 	})
 }
 
@@ -100,8 +100,15 @@ func TestCache_Unsubscribe(t *testing.T) {
 
 			_, exists = cache.connectionID2Channels[conn.ID()][ch]
 			assert.False(t, exists)
+
+			assert.Equal(t, len(cache.connectionID2Channels), int(mockCollector.OpenConnectionsCount.Value()))
+			assert.Equal(t, len(cache.channel2Connections), int(mockCollector.SubscribedChannelsCount.Value()))
+			assert.Equal(t, len(cache.userID2ConnectionID), int(mockCollector.PrivateConnectionsCount.Value()))
 		})
 	}
+
+	assert.Equal(t, 0, int(mockCollector.OpenConnectionsCount.Value()))
+	assert.Equal(t, 0, int(mockCollector.PrivateConnectionsCount.Value()))
 }
 
 // TestCache_UnsubscribeUserID unsubscribes userIDs from multiple channels concurrently.
@@ -118,7 +125,7 @@ func TestCache_UnsubscribeUserID(t *testing.T) {
 
 	mockCollector := mock.NewCollector()
 	cache := initCache(mockCollector, connections...)
-	assert.Equal(t, int32(len(connections)), mockCollector.PrivateConnections())
+	assert.Equal(t, int32(len(connections)), mockCollector.PrivateConnectionsGauge)
 
 	wg := new(sync.WaitGroup)
 	wg.Add(len(testChannels) * len(userID2Connection))
@@ -142,12 +149,17 @@ func TestCache_UnsubscribeUserID(t *testing.T) {
 
 				_, exists = cache.userID2ConnectionID[userID]
 				assert.False(t, exists)
+
+				assert.Equal(t, len(cache.connectionID2Channels), int(mockCollector.OpenConnectionsCount.Value()))
+				assert.Equal(t, len(cache.channel2Connections), int(mockCollector.SubscribedChannelsCount.Value()))
+				assert.Equal(t, len(cache.userID2ConnectionID), int(mockCollector.PrivateConnectionsCount.Value()))
 			}()
 		}
 	}
 
 	wg.Wait()
-	assert.Equal(t, int32(0), mockCollector.PrivateConnections())
+	assert.Equal(t, int32(0), mockCollector.PrivateConnectionsGauge)
+	assert.Equal(t, 0, int(mockCollector.PrivateConnectionsCount.Value()))
 }
 
 // TestCache_Remove removes multiple connections from the storage concurrently.
@@ -161,7 +173,7 @@ func TestCache_Remove(t *testing.T) {
 
 	mockCollector := mock.NewCollector()
 	cache := initCache(mockCollector, connections...)
-	assert.Equal(t, int32(len(connections)), mockCollector.PrivateConnections())
+	assert.Equal(t, int32(len(connections)), mockCollector.PrivateConnectionsGauge)
 
 	wg := new(sync.WaitGroup)
 	wg.Add(len(connections))
@@ -181,11 +193,16 @@ func TestCache_Remove(t *testing.T) {
 				_, exists := cache.channel2Connections[ch][connections[i].ID()]
 				assert.False(t, exists)
 			}
+			assert.Equal(t, len(cache.connectionID2Channels), int(mockCollector.OpenConnectionsCount.Value()))
+			assert.Equal(t, len(cache.channel2Connections), int(mockCollector.SubscribedChannelsCount.Value()))
+			assert.Equal(t, len(cache.userID2ConnectionID), int(mockCollector.PrivateConnectionsCount.Value()))
 		}()
 	}
 
 	wg.Wait()
-	assert.Equal(t, int32(0), mockCollector.PrivateConnections())
+	assert.Equal(t, int32(0), mockCollector.PrivateConnectionsGauge)
+	assert.Equal(t, 0, int(mockCollector.OpenConnectionsCount.Value()))
+	assert.Equal(t, 0, int(mockCollector.PrivateConnectionsCount.Value()))
 }
 
 // TestCache_Connections returns multiple list of available connections

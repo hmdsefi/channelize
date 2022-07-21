@@ -15,6 +15,9 @@ import (
 type collector interface {
 	PrivateConnectionsInc()
 	PrivateConnectionsDec()
+	SubscribedChannels(float64)
+	PrivateConnections(float64)
+	OpenConnections(float64)
 }
 
 // Cache is an in-memory storage to store available channels and connections.
@@ -83,6 +86,10 @@ func (c *Cache) Subscribe(_ context.Context, conn common.ConnectionWrapper, chan
 		c.connectionID2Channels[conn.ID()][ch] = struct{}{}
 		c.channel2Connections[ch][conn.ID()] = conn
 	}
+
+	c.collector.SubscribedChannels(float64(len(c.channel2Connections)))
+	c.collector.OpenConnections(float64(len(c.connectionID2Channels)))
+	c.collector.PrivateConnections(float64(len(c.userID2ConnectionID)))
 }
 
 // Unsubscribe removes the input channels subscription from the internal maps.
@@ -97,6 +104,9 @@ func (c *Cache) Unsubscribe(_ context.Context, connID string, channels ...channe
 		delete(c.connectionID2Channels[connID], ch)
 		delete(c.channel2Connections[ch], connID)
 	}
+
+	c.collector.SubscribedChannels(float64(len(c.channel2Connections)))
+	c.collector.OpenConnections(float64(len(c.connectionID2Channels)))
 }
 
 // UnsubscribeUserID removes the input channels subscription from the internal maps.
@@ -118,6 +128,10 @@ func (c *Cache) UnsubscribeUserID(_ context.Context, connID string, userID strin
 
 	delete(c.connectionID2Channels[connID], ch)
 	delete(c.channel2Connections[ch], connID)
+
+	c.collector.SubscribedChannels(float64(len(c.channel2Connections)))
+	c.collector.OpenConnections(float64(len(c.connectionID2Channels)))
+	c.collector.PrivateConnections(float64(len(c.userID2ConnectionID)))
 }
 
 // Remove removes all subscriptions of the input connection id. Removing
@@ -142,6 +156,10 @@ func (c *Cache) Remove(_ context.Context, connID string, userID *string) {
 			c.collector.PrivateConnectionsDec()
 		}
 	}
+
+	c.collector.SubscribedChannels(float64(len(c.channel2Connections)))
+	c.collector.OpenConnections(float64(len(c.connectionID2Channels)))
+	c.collector.PrivateConnections(float64(len(c.userID2ConnectionID)))
 }
 
 // Connections returns a list of connections that already subscribed

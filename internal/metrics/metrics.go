@@ -16,6 +16,10 @@ type Metrics struct {
 
 	// privateConnections represents total number of private connections.
 	privateConnections prometheus.Gauge
+
+	subscribedChannelsSet prometheus.Gauge
+	openConnectionsSet    prometheus.Gauge
+	privateConnectionsSet prometheus.Gauge
 }
 
 func NewMetrics() *Metrics {
@@ -33,11 +37,29 @@ func newMetricsWithPostfix(postfix string) *Metrics {
 		Help: "Total number of private connections",
 	})
 
+	privateConnectionsSet := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "private_connections_storage_length" + postfix,
+		Help: "Total number of private connections based on the length of storage",
+	})
+
+	openConnectionsSet := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "open_connections_storage_length" + postfix,
+		Help: "Total number of open connections based on the length of storage",
+	})
+
+	subscribedChannelsSet := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "subscribed_channels_storage_length" + postfix,
+		Help: "Total number of open connections based on the length of storage",
+	})
+
 	prometheus.MustRegister(openConnections)
 
 	return &Metrics{
-		openConnections:    openConnections,
-		privateConnections: privateConnections,
+		openConnections:       openConnections,
+		privateConnections:    privateConnections,
+		privateConnectionsSet: privateConnectionsSet,
+		openConnectionsSet:    openConnectionsSet,
+		subscribedChannelsSet: subscribedChannelsSet,
 	}
 }
 
@@ -59,4 +81,16 @@ func (m *Metrics) PrivateConnectionsInc() {
 // PrivateConnectionsDec decreases the total number of private connections.
 func (m *Metrics) PrivateConnectionsDec() {
 	m.privateConnections.Dec()
+}
+
+func (m *Metrics) PrivateConnections(in float64) {
+	m.privateConnectionsSet.Set(in)
+}
+
+func (m *Metrics) OpenConnections(in float64) {
+	m.openConnectionsSet.Set(in)
+}
+
+func (m *Metrics) SubscribedChannels(in float64) {
+	m.subscribedChannelsSet.Set(in)
 }

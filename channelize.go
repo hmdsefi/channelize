@@ -50,10 +50,10 @@ type dispatcher interface {
 
 // collector is an interface for collecting the connection metrics.
 type collector interface {
-	// OpenConnection increases the total number of open connections.
+	// OpenConnectionsInc increases the total number of open connections.
 	OpenConnectionsInc()
 
-	// CloseConnection decreases the total number of open connections.
+	// OpenConnectionsDec decreases the total number of open connections.
 	OpenConnectionsDec()
 
 	// PrivateConnectionsInc increases total number of private connections.
@@ -61,6 +61,10 @@ type collector interface {
 
 	// PrivateConnectionsDec decreases total number of private connections.
 	PrivateConnectionsDec()
+
+	SubscribedChannels(float64)
+	PrivateConnections(float64)
+	OpenConnections(float64)
 }
 
 type Option func(*Config)
