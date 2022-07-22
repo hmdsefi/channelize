@@ -13,6 +13,10 @@ Channelize gives you this option to categorize the outbound messages. You can ch
 and register them as a channel in the Channelize and send messages to those channels. Then client can subscribe
 to one or more channels to receive the streams.
 
+The main usage of Channelize is in cryptocurrency exchanges, when you have multiple channels like user's balances, 
+user's orders, user's trades, market trades, mini-ticker data, etc. The front-end should be able to subscribe to 
+the related channels in each page and unsubscribe those that doesn't need any more.
+
 ![channelize](images/channelize.png?raw=true "channelize")
 
 ## Table of Contents
