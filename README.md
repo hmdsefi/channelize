@@ -25,6 +25,7 @@ the related channels in each page and unsubscribe those that doesn't need any mo
 * [How to use](#How-to-use)
     * [Public channels](#Public-channels)
     * [Private channels](#Private-channels)
+* [Metrics](#Metrics)
 * [Examples](https://github.com/hmdsefi/channelize/tree/master/_examples)
 
 ### Install
@@ -179,6 +180,18 @@ To unsubscribe, client can use the following message:
   }
 }
 ```
+
+### Metrics
+
+You can find the following prometheus metrics in Channelize:
+
+| METRIC                             | TYPE  | DESCRIPTION                                    |
+|------------------------------------|-------|------------------------------------------------|
+| open_connections                   | gauge | Number of open connections.                    |
+| private_connections                | gauge | Number of private connections.                 |
+| private_connections_storage_length | gauge | Number of stored private connections.          |
+| open_connections_storage_length    | gauge | Number of stored open connections.             |
+| subscribed_channels_storage_length | gauge | Number of subscribed channels that are stored. |
 
 ## License
 
